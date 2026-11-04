@@ -6,7 +6,7 @@ export function Navbar() {
   const { user, logout } = useAuth()
 
   return (
-    <header className="site-nav">
+    <header className="header">
       <div className="nav-inner">
         <Logo />
         <nav className="nav-links" aria-label="Primary">
@@ -24,12 +24,12 @@ export function Navbar() {
           {user ? (
             <>
               <span className="nav-user">{user.name.split(' ')[0]}</span>
-              <button type="button" className="btn btn-ghost" onClick={logout}>
+              <button type="button" className="btn-outline" onClick={logout}>
                 Sign out
               </button>
             </>
           ) : (
-            <NavLink to="/login" className="btn btn-navy">
+            <NavLink to="/login" className="btn">
               Sign in
             </NavLink>
           )}

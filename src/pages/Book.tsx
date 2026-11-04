@@ -180,7 +180,7 @@ export function Book() {
                 <div className="hours-control">
                   <button
                     type="button"
-                    className="btn btn-ghost"
+                    className="btn-outline"
                     onClick={() =>
                       setHours((h) => Math.max(selectedPackage.minHours, h - 1))
                     }
@@ -205,7 +205,7 @@ export function Book() {
                   />
                   <button
                     type="button"
-                    className="btn btn-ghost"
+                    className="btn-outline"
                     onClick={() => setHours((h) => Math.min(16, h + 1))}
                     aria-label="Increase hours"
                   >
@@ -255,10 +255,10 @@ export function Book() {
                 </label>
                 {message && <p className="form-msg">{message}</p>}
                 <div className="form-actions">
-                  <button type="button" className="btn btn-ghost" onClick={back}>
+                  <button type="button" className="btn-outline" onClick={back}>
                     Back
                   </button>
-                  <button type="submit" className="btn btn-navy">
+                  <button type="submit" className="btn">
                     {user ? 'Confirm booking' : 'Sign in to confirm'}
                   </button>
                 </div>
@@ -269,13 +269,13 @@ export function Book() {
               <div className="form-actions">
                 <button
                   type="button"
-                  className="btn btn-ghost"
+                  className="btn-outline"
                   onClick={back}
                   disabled={step === 0}
                 >
                   Back
                 </button>
-                <button type="button" className="btn btn-navy" onClick={next}>
+                <button type="button" className="btn" onClick={next}>
                   Continue
                 </button>
               </div>

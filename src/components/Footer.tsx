@@ -3,7 +3,7 @@ import { Logo } from './Logo'
 
 export function Footer() {
   return (
-    <footer className="site-footer">
+    <footer className="footer">
       <div className="footer-grid">
         <div className="footer-brand">
           <Logo light />

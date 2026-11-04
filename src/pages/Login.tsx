@@ -60,7 +60,7 @@ export function Login() {
         <div className="auth-card">
           <Logo size="sm" />
           <h1>{mode === 'login' ? 'Welcome back' : 'Join Clicksy'}</h1>
-          <p>
+          <p className="auth-note">
             {intent === 'confirm'
               ? 'Sign in to lock your booking. Your quote is saved.'
               : 'Demo tip: admin@clicksy.com or sara@email.com — any password.'}
@@ -126,7 +126,7 @@ export function Login() {
               />
             </label>
             {error && <p className="form-msg error">{error}</p>}
-            <button type="submit" className="btn btn-navy btn-block">
+            <button type="submit" className="btn btn-block">
               {mode === 'login' ? 'Sign in' : 'Create account'}
             </button>
           </form>

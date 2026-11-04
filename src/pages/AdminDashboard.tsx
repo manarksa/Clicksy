@@ -192,7 +192,7 @@ export function AdminDashboard() {
         title="Admin"
         items={items}
         footer={
-          <button type="button" className="btn btn-ghost btn-block" onClick={logout}>
+          <button type="button" className="btn-outline btn-block" onClick={logout}>
             Sign out
           </button>
         }

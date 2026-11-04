@@ -9,6 +9,8 @@ export function Home() {
       <Navbar />
 
       <section className="hero">
+        <div className="flash flash-1" aria-hidden></div>
+        <div className="flash flash-2" aria-hidden></div>
         <div className="hero-bg" aria-hidden>
           <div className="hero-grain" />
           <div className="hero-beam" />
@@ -22,10 +24,10 @@ export function Home() {
             booked in minutes, delivered like a studio.
           </p>
           <div className="hero-cta">
-            <Link to="/book" className="btn btn-navy btn-lg">
+            <Link to="/book" className="btn btn-lg">
               Build your quote
             </Link>
-            <a href="#packages" className="btn btn-ghost-light btn-lg">
+            <a href="#packages" className="btn-outline btn-lg">
               View packages
             </a>
           </div>
@@ -81,7 +83,7 @@ export function Home() {
               </ul>
               <Link
                 to={`/book?package=${pkg.id}`}
-                className="btn btn-navy btn-block"
+                className="btn btn-block"
               >
                 Select {pkg.name}
               </Link>
@@ -118,7 +120,7 @@ export function Home() {
         <div className="cta-band-inner">
           <h2>Ready when the lights go down.</h2>
           <p>Build a quote in under two minutes. No deposit until we confirm.</p>
-          <Link to="/book" className="btn btn-white btn-lg">
+          <Link to="/book" className="btn btn-lg">
             Start booking
           </Link>
         </div>
