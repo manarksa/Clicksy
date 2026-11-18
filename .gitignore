@@ -25,3 +25,8 @@ dist-ssr
 
 # Secrets (MySQL + Gmail passwords)
 .env
+
+# Database backups (customer data — never commit)
+backups/
+.env.*
+!.env.example

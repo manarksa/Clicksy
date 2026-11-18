@@ -43,3 +43,22 @@
 | `npm start` | تشغيل الخادم وحده مع الموقع المبني على http://localhost:4000 |
 | `npm run test:db` | اختبار حقيقي: حساب + دخول + حجز + قراءة من MySQL |
 | `npm run lint` | فحص الكود |
+
+## النشر (مجاني): Render + TiDB Cloud Starter + Brevo
+
+| | القيمة |
+|---|---|
+| Build Command | `npm ci --include=dev && npm run build` |
+| Start Command | `npm start` |
+| Health Check Path | `/api/health` |
+| Instance Type | **Free** |
+
+متغيرات البيئة في Render (بدون `PORT`، Render يحدده بنفسه):
+`NODE_ENV=production` · `DB_HOST` · `DB_PORT=4000` · `DB_USER` · `DB_PASSWORD` · `DB_NAME=clicksy` · `DB_SSL=true` ·
+`OWNER_NAME` · `OWNER_EMAIL` · `OWNER_PASSWORD` · `MAIL_PROVIDER=brevo` · `BREVO_API_KEY` · `MAIL_FROM`
+
+نقل البيانات من MySQL المحلي إلى TiDB (لا يحذف شيئًا):
+1. `npm run test:tidb` — اختبار حقيقي على TiDB باستخدام `.env.tidb`.
+2. `npm run db:copy` — تجربة بدون كتابة، ثم `npm run db:copy -- --yes` للنسخ.
+
+النسخ الاحتياطية في `backups/` (متجاهلة في git).

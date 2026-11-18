@@ -1,12 +1,43 @@
 import nodemailer from 'nodemailer'
 import { config } from './config.js'
 
-const { host, port, user, pass, from } = config.mail
-const transport = user && !config.mail.disabled
-  ? nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } })
-  : null
+let smtp = null
 
-export const mailEnabled = Boolean(transport)
+/** Which way email leaves the server right now: 'brevo' | 'smtp' | 'console'. */
+export function mailProvider() {
+  const m = config.mail
+  if (m.disabled) return 'console'
+  if (m.provider === 'brevo' && m.brevoKey) return 'brevo'
+  if (m.provider === 'smtp' && m.user) return 'smtp'
+  return 'console'
+}
+
+/** Brevo transactional email over HTTPS (works where SMTP ports are blocked, e.g. Render free). */
+async function sendWithBrevo({ to, subject, text, html }) {
+  const m = config.mail
+  const res = await fetch(m.brevoUrl, {
+    method: 'POST',
+    headers: { 'api-key': m.brevoKey, 'content-type': 'application/json', accept: 'application/json' },
+    body: JSON.stringify({
+      sender: m.sender,
+      to: [{ email: to }],
+      subject,
+      htmlContent: html,
+      textContent: text,
+    }),
+    signal: AbortSignal.timeout(15_000),
+  })
+  if (!res.ok) {
+    const detail = (await res.text().catch(() => '')).slice(0, 300)
+    throw new Error(`Brevo answered ${res.status}: ${detail}`)
+  }
+}
+
+async function sendWithSmtp({ to, subject, text, html }) {
+  const { host, port, user, pass, from } = config.mail
+  smtp ??= nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } })
+  await smtp.sendMail({ from, to, subject, text, html })
+}
 
 const escape = (s) =>
   String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c])
@@ -25,12 +56,14 @@ function layout(title, bodyHtml) {
 
 /** Sends an email. Without SMTP settings it prints the message in the terminal instead. */
 export async function sendMail({ to, subject, text, html }) {
-  if (!transport) {
+  const provider = mailProvider()
+  if (provider === 'console') {
     console.log(`\n📧 [email not configured — printed here instead]\n   To: ${to}\n   Subject: ${subject}\n   ${text.replaceAll('\n', '\n   ')}\n`)
     return
   }
   try {
-    await transport.sendMail({ from, to, subject, text, html })
+    const message = { to, subject, text, html }
+    await (provider === 'brevo' ? sendWithBrevo(message) : sendWithSmtp(message))
   } catch (err) {
     console.error('✗ Email failed:', err.message)
     throw err

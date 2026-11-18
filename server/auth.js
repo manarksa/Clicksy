@@ -96,7 +96,12 @@ async function issueCode(user) {
      VALUES (?, ?, NOW() + INTERVAL ${CODE_MINUTES} MINUTE)`,
     [user.id, sha256(code)],
   )
-  await codeEmail(user.email, user.name, code)
+  try {
+    await codeEmail(user.email, user.name, code)
+    return true
+  } catch {
+    return false // logged by the mailer; the route answers 'mailFailed'
+  }
 }
 
 export const authRouter = Router()
@@ -134,7 +139,7 @@ authRouter.post('/register', async (req, res) => {
     )
     user = { id: result.insertId, name, email, phone }
   }
-  await issueCode(user)
+  if (!(await issueCode(user))) return res.status(502).json({ error: 'mailFailed' })
   res.json({ pending: true, email })
 })
 
@@ -152,7 +157,7 @@ authRouter.post('/login', async (req, res) => {
   const ok = user && (await bcrypt.compare(password, user.password_hash))
   if (!ok) return res.status(401).json({ error: 'invalid' })
 
-  await issueCode(user)
+  if (!(await issueCode(user))) return res.status(502).json({ error: 'mailFailed' })
   res.json({ pending: true, email })
 })
 
@@ -210,7 +215,7 @@ authRouter.post('/resend', async (req, res) => {
   if (!codes[0]) return res.status(400).json({ error: 'expired' })
   if (codes[0].age < RESEND_SECONDS) return res.status(429).json({ error: 'wait' })
 
-  await issueCode(user)
+  if (!(await issueCode(user))) return res.status(502).json({ error: 'mailFailed' })
   res.json({ ok: true })
 })
 

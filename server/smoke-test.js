@@ -9,7 +9,7 @@
 import { createHash } from 'node:crypto'
 
 const { config } = await import('./config.js')
-config.mail.user = '' // print emails instead of sending them during the test
+config.mail.disabled = true // print emails instead of sending them during the test
 const db = await import('./db.js')
 try {
   await db.initDb()
@@ -56,7 +56,7 @@ const password = 'Sm0ke-test-pass'
 let testUserId = null
 
 try {
-  console.log(`\nMySQL: ${config.db.user}@${config.db.host}:${config.db.port}/${config.db.database}\n`)
+  console.log(`\n${db.dbFlavor}: ${config.db.user}@${config.db.host}:${config.db.port}/${config.db.database}${config.db.ssl ? ' (TLS)' : ''}\n`)
 
   console.log('1) Create account')
   const c = client()
@@ -150,6 +150,10 @@ try {
   console.error('\n✗ Test crashed:', err.message)
 } finally {
   if (testUserId) {
+    // Children first, so cleanup is complete even where foreign keys are not enforced.
+    for (const table of ['bookings', 'email_codes', 'sessions']) {
+      await pool.query(`DELETE FROM ${table} WHERE user_id = ?`, [testUserId])
+    }
     await pool.query('DELETE FROM users WHERE id = ? AND email LIKE ?', [testUserId, 'smoke-%@test.clicksy.local'])
     console.log('\nCleanup: removed only the test client and its booking/codes/sessions.')
   }
