@@ -6,6 +6,6 @@ export default defineConfig({
   plugins: [react()],
   server: {
     // Calls to /api go to the Express server (server/index.js).
-    proxy: { '/api': 'http://localhost:4000' },
+    proxy: { '/api': `http://localhost:${process.env.API_PORT ?? 4000}` },
   },
 })

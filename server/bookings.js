@@ -104,13 +104,23 @@ bookingsRouter.post('/bookings', requireUser, async (req, res) => {
 bookingsRouter.patch('/bookings/:id', requireOwner, async (req, res) => {
   const status = String(req.body?.status ?? '')
   if (!STATUSES.includes(status)) return res.status(400).json({ error: 'invalid' })
-  const before = await findBooking(req.params.id)
-  if (!before) return res.status(404).json({ error: 'notFound' })
+  // One atomic UPDATE: if the same request arrives twice (double click, retry, two tabs),
+  // only the first one changes a row, so the client gets exactly one email.
+  const [result] = await pool.query(
+    'UPDATE bookings SET status = ? WHERE id = ? AND status <> ?',
+    [status, req.params.id, status],
+  )
+  const booking = await findBooking(req.params.id)
+  if (!booking) return res.status(404).json({ error: 'notFound' })
+  const changed = result.affectedRows === 1
+  if (changed) quietly(statusEmail(booking))
+  res.json({ booking, changed })
+})
 
-  await pool.query('UPDATE bookings SET status = ? WHERE id = ?', [status, req.params.id])
-  const booking = { ...before, status }
-  if (before.status !== status) quietly(statusEmail(booking))
-  res.json({ booking })
+bookingsRouter.delete('/bookings/:id', requireOwner, async (req, res) => {
+  const [result] = await pool.query('DELETE FROM bookings WHERE id = ?', [req.params.id])
+  if (result.affectedRows === 0) return res.status(404).json({ error: 'notFound' })
+  res.json({ ok: true })
 })
 
 bookingsRouter.get('/clients', requireOwner, async (_req, res) => {

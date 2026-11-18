@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer'
 import { config } from './config.js'
 
 const { host, port, user, pass, from } = config.mail
-const transport = user
+const transport = user && !config.mail.disabled
   ? nodemailer.createTransport({ host, port, secure: port === 465, auth: { user, pass } })
   : null
 

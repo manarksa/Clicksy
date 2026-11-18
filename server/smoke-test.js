@@ -98,6 +98,8 @@ try {
   check(r.data.bookings?.some((b) => b.id === bookingId), 'client sees the booking from MySQL')
   r = await c(`/bookings/${bookingId}`, { method: 'PATCH', body: { status: 'confirmed' } })
   check(r.status === 403, 'client cannot change the status (owner only)')
+  r = await c(`/bookings/${bookingId}`, { method: 'DELETE' })
+  check(r.status === 403, 'client cannot delete a booking (owner only)')
 
   console.log('\n5) Sign out, sign in again')
   await c('/auth/logout', { method: 'POST' })
@@ -128,9 +130,19 @@ try {
     check(r.data.bookings?.some((b) => b.id === bookingId && b.packageName === 'Signature'), "owner sees the client's booking and package")
     r = await o('/clients')
     check(r.data.clients?.some((x) => x.email === email && x.bookingCount === 1), 'owner sees the client list')
-    r = await o(`/bookings/${bookingId}`, { method: 'PATCH', body: { status: 'confirmed' } })
+    // Three identical confirms at once (double click / retry): only one may change the row and email.
+    const many = await Promise.all(
+      [1, 2, 3].map(() => o(`/bookings/${bookingId}`, { method: 'PATCH', body: { status: 'confirmed' } })),
+    )
+    const changedCount = many.filter((x) => x.data.changed).length
     const [[after]] = await pool.query('SELECT status FROM bookings WHERE id = ?', [bookingId])
-    check(r.status === 200 && after.status === 'confirmed', 'owner confirmed it — saved in MySQL')
+    check(many.every((x) => x.status === 200) && after.status === 'confirmed', 'owner confirmed it — saved in MySQL')
+    check(changedCount === 1, 'repeated confirm changes it once → one email only', `${changedCount} of 3 changed`)
+    r = await o('/bookings/999999999', { method: 'PATCH', body: { status: 'confirmed' } })
+    check(r.status === 404, 'confirming a missing booking fails cleanly')
+    r = await o(`/bookings/${bookingId}`, { method: 'DELETE' })
+    const [[gone]] = await pool.query('SELECT COUNT(*) n FROM bookings WHERE id = ?', [bookingId])
+    check(r.status === 200 && gone.n === 0, 'owner deleted it — removed from MySQL')
     await o('/auth/logout', { method: 'POST' })
   }
 } catch (err) {

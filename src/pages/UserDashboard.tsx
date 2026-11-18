@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { Link, Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
 import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Sidebar } from '../components/Sidebar'
 import { useAuth } from '../context/AuthContext'
@@ -35,6 +35,11 @@ function Overview() {
         {t.dash.hello} {user?.name.split(' ')[0]}
       </h1>
       <p className="lede">{t.dash.lede}</p>
+      <p className="panel-cta">
+        <Link to="/book" className="btn">
+          + {t.dash.newBooking}
+        </Link>
+      </p>
       {justBooked && (
         <div className="toast" role="status">
           <span>✓ {t.dash.booked}</span>
@@ -175,13 +180,15 @@ export function UserDashboard() {
     { to: '/dashboard', label: t.dash.overview, end: true },
     { to: '/dashboard/bookings', label: t.dash.bookings },
     { to: '/dashboard/profile', label: t.dash.profile },
-    { to: '/book', label: t.dash.newBooking },
+    { to: '/book', label: `+ ${t.dash.newBooking}`, cta: true },
   ]
 
   return (
-    <div className="dash-shell">
+    <div className="dash-shell dash-client">
       <Sidebar
-        title={t.dash.studio}
+        variant="client"
+        title={t.dash.clientTitle}
+        badge={t.dash.clientBadge}
         items={items}
         footer={
           <button type="button" className="btn-outline btn-block" onClick={logout}>
@@ -191,10 +198,18 @@ export function UserDashboard() {
       />
       <div className="dash-main">
         <header className="dash-top">
-          <NavLink to="/">{t.dash.back}</NavLink>
+          <div className="dash-top-title">
+            <p className="console-title">{t.dash.clientTitle}</p>
+            <NavLink to="/">{t.dash.back}</NavLink>
+          </div>
           <div className="dash-top-actions">
             <LanguageSwitcher />
-            <span>{user.email}</span>
+            <span className="account-chip">
+              <span>{user.email}</span>
+              <span className="role-badge role-badge-client">
+                <span aria-hidden>●</span> {t.dash.clientBadge}
+              </span>
+            </span>
           </div>
         </header>
         <Routes>

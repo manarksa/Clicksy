@@ -31,7 +31,9 @@ interface BookingContextValue {
   clearDraft: () => void
   /** Sends the booking to the server. Throws ApiError on failure. */
   createBooking: (draft: BookingDraft) => Promise<Booking>
-  updateStatus: (id: string, status: BookingStatus) => Promise<void>
+  /** Saves in MySQL first; local state changes only after success. `changed` is false if it already had that status. */
+  updateStatus: (id: string, status: BookingStatus) => Promise<{ changed: boolean }>
+  deleteBooking: (id: string) => Promise<void>
   reload: () => Promise<void>
 }
 
@@ -94,16 +96,22 @@ export function BookingProvider({ children }: { children: ReactNode }) {
   )
 
   const updateStatus = useCallback(async (id: string, status: BookingStatus) => {
-    const { booking } = await api<{ booking: Booking }>(`/bookings/${id}`, {
+    const { booking, changed } = await api<{ booking: Booking; changed: boolean }>(`/bookings/${id}`, {
       method: 'PATCH',
       body: { status },
     })
     setBookings((current) => current.map((b) => (b.id === id ? booking : b)))
+    return { changed }
+  }, [])
+
+  const deleteBooking = useCallback(async (id: string) => {
+    await api(`/bookings/${id}`, { method: 'DELETE' })
+    setBookings((current) => current.filter((b) => b.id !== id))
   }, [])
 
   const value = useMemo(
-    () => ({ bookings, loading, draft, saveDraft, clearDraft, createBooking, updateStatus, reload }),
-    [bookings, loading, draft, saveDraft, clearDraft, createBooking, updateStatus, reload],
+    () => ({ bookings, loading, draft, saveDraft, clearDraft, createBooking, updateStatus, deleteBooking, reload }),
+    [bookings, loading, draft, saveDraft, clearDraft, createBooking, updateStatus, deleteBooking, reload],
   )
 
   return <BookingContext.Provider value={value}>{children}</BookingContext.Provider>

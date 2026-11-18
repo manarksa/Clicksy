@@ -2423,6 +2423,369 @@ html[dir='rtl'] .sidebar-link.active {
   animation: pulse-bg 1.2s ease-in-out infinite;
 }
 
+/* ═══════════ Owner vs client desks ═══════════ */
+
+/* Role badges: text + shape, never colour alone */
+.role-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  width: fit-content;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  font-size: 0.76rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  white-space: nowrap;
+}
+
+.role-badge span {
+  font-size: 0.6rem;
+}
+
+.role-badge-owner {
+  background: #f3d9a8;
+  color: #3a1c26;
+  border: 1px solid #e2bd77;
+}
+
+.role-badge-client {
+  background: var(--surface);
+  color: var(--plum);
+  border: 1px solid var(--blush-btn);
+}
+
+.sidebar-top {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.sidebar .sidebar-title {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: none;
+  line-height: 1.25;
+}
+
+html[dir='rtl'] .sidebar .sidebar-title {
+  font-family: 'IBM Plex Sans Arabic', var(--font-display);
+}
+
+/* Owner: darker, quieter console */
+.sidebar-owner {
+  background:
+    radial-gradient(90% 35% at 0% 0%, rgba(243, 217, 168, 0.12), transparent 70%),
+    linear-gradient(180deg, #2c1420 0%, #1f0d16 100%);
+  border-inline-end: 1px solid rgba(243, 217, 168, 0.15);
+}
+
+.sidebar-owner .sidebar-title {
+  color: #fbf1e4;
+}
+
+.sidebar-owner .sidebar-link {
+  color: rgba(251, 241, 228, 0.72);
+}
+
+.sidebar-owner .sidebar-link:hover,
+.sidebar-owner .sidebar-link.active {
+  background: rgba(243, 217, 168, 0.1);
+  color: #fbf1e4;
+}
+
+.sidebar-owner .sidebar-link.active {
+  box-shadow: inset 3px 0 0 #e2bd77;
+}
+
+html[dir='rtl'] .sidebar-owner .sidebar-link.active {
+  box-shadow: inset -3px 0 0 #e2bd77;
+}
+
+.sidebar-owner .sidebar-footer .btn-outline {
+  border-color: rgba(243, 217, 168, 0.4);
+  color: #fbf1e4;
+}
+
+/* Client: the site's own light blush palette */
+.sidebar-client {
+  background:
+    radial-gradient(90% 35% at 0% 0%, rgba(232, 180, 190, 0.45), transparent 70%),
+    var(--header-bg);
+  color: var(--plum);
+  border-inline-end: 1px solid var(--border);
+}
+
+.sidebar-client .logo {
+  color: var(--plum);
+}
+
+.sidebar-client .sidebar-title {
+  color: var(--plum);
+}
+
+.sidebar-client .sidebar-link {
+  color: var(--plum);
+}
+
+.sidebar-client .sidebar-link:hover,
+.sidebar-client .sidebar-link.active {
+  background: var(--surface);
+  color: var(--bordeaux);
+}
+
+.sidebar-client .sidebar-footer .btn-outline {
+  border-color: var(--plum);
+  color: var(--plum);
+}
+
+.sidebar-client .sidebar-footer .btn-outline:hover {
+  background: var(--blush);
+}
+
+.sidebar .sidebar-cta,
+.sidebar .sidebar-cta:hover {
+  margin-top: 0.4rem;
+  background: var(--blush-btn);
+  color: var(--plum);
+  text-align: center;
+  font-weight: 700;
+  box-shadow: 0 4px 14px rgba(232, 180, 190, 0.45);
+}
+
+.sidebar .sidebar-cta:hover {
+  background: var(--blush-hover);
+}
+
+/* Top bar: fixed desk title + account */
+.dash-top {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin: -1.25rem -1.5rem 1.25rem;
+  padding: 0.9rem 1.5rem;
+  background: var(--glass);
+  backdrop-filter: saturate(160%) blur(12px);
+  -webkit-backdrop-filter: saturate(160%) blur(12px);
+  border-bottom: 1px solid var(--border);
+  flex-wrap: wrap;
+}
+
+.dash-owner .dash-top {
+  border-bottom: 2px solid #e2bd77;
+}
+
+.dash-top-title {
+  display: grid;
+  gap: 0.1rem;
+}
+
+.console-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: var(--bordeaux);
+}
+
+html[dir='rtl'] .console-title {
+  font-family: 'IBM Plex Sans Arabic', var(--font-display);
+}
+
+.dash-top-title a {
+  font-size: 0.85rem;
+  color: var(--muted);
+}
+
+.dash-top-title a:hover {
+  color: var(--plum);
+}
+
+.account-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  color: var(--text);
+}
+
+.panel-cta {
+  margin: 1rem 0 0;
+}
+
+/* Booking actions */
+.btn-sm {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.88rem;
+}
+
+.btn-danger,
+.btn.btn-danger:hover {
+  background: var(--danger);
+  border-color: var(--danger);
+  color: #fff;
+  box-shadow: none;
+}
+
+.btn.btn-danger:hover {
+  background: #7f2222;
+}
+
+.link-danger {
+  color: var(--danger);
+  text-decoration-color: rgba(155, 44, 44, 0.35);
+}
+
+.link-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.booking-actions {
+  display: grid;
+  gap: 0.5rem;
+  justify-items: end;
+}
+
+.booking-actions-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.booking-actions-quiet {
+  gap: 1rem;
+  font-size: 0.88rem;
+}
+
+.status-select select {
+  padding: 0.45rem 0.7rem;
+  font-size: 0.88rem;
+}
+
+.status-select select:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}
+
+.booking-item h3 .status {
+  vertical-align: middle;
+  margin-inline-start: 0.35rem;
+}
+
+.booking-item.booking-pending {
+  border-inline-start: 4px solid var(--warn);
+}
+
+.confirm-box {
+  width: min(100%, 20rem);
+  padding: 0.8rem 0.9rem;
+  border: 1px solid rgba(155, 44, 44, 0.3);
+  border-radius: 12px;
+  background: #fdf3f3;
+  animation: rise 0.25s var(--ease) both;
+}
+
+.confirm-box p {
+  margin: 0 0 0.6rem !important;
+  color: var(--danger) !important;
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.inline-error {
+  margin: 0;
+  max-width: 20rem;
+  color: var(--danger);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.row-actions {
+  display: grid;
+  gap: 0.3rem;
+  justify-items: start;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.spinner {
+  display: inline-block;
+  width: 0.85em;
+  height: 0.85em;
+  border: 2px solid currentColor;
+  border-inline-end-color: transparent;
+  border-radius: 50%;
+  vertical-align: -0.1em;
+  animation: spin 0.7s linear infinite;
+}
+
+.btn[aria-busy='true'] {
+  cursor: wait;
+}
+
+/* Floating success toast */
+.toast-dock {
+  position: fixed;
+  z-index: 60;
+  left: 50%;
+  bottom: calc(1.25rem + env(safe-area-inset-bottom));
+  transform: translateX(-50%);
+  width: min(30rem, calc(100vw - 2rem));
+  pointer-events: none;
+}
+
+.toast-floating {
+  margin: 0;
+  pointer-events: auto;
+  box-shadow: 0 14px 34px rgba(31, 122, 77, 0.22);
+  background: #e9f7ef;
+}
+
+@media (max-width: 980px) {
+  .dash-top {
+    position: static;
+    margin: 0 0 1rem;
+    padding: 0.75rem 0;
+    background: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+
+  .booking-actions,
+  .booking-actions-row {
+    justify-items: start;
+    justify-content: flex-start;
+  }
+
+  .sidebar-top {
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: 0.75rem;
+  }
+
+  .sidebar .sidebar-title {
+    margin: 0;
+    font-size: 0.95rem;
+  }
+
+  .sidebar-top .role-badge {
+    grid-column: 1 / -1;
+  }
+
+  .sidebar {
+    gap: 0.9rem;
+  }
+}
+
 /* التجاوب مع الشاشات الصغيرة */
 @media (max-width: 980px) {
   .nav-inner {

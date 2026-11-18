@@ -25,5 +25,7 @@ export const config = {
     user: env.SMTP_USER || '',
     pass: env.SMTP_PASS || '',
     from: env.MAIL_FROM || env.SMTP_USER || 'Clicksy <no-reply@clicksy.local>',
+    /** MAIL_DISABLED=1 prints emails instead of sending (used by tests). */
+    disabled: env.MAIL_DISABLED === '1',
   },
 }
