@@ -1,44 +1,61 @@
-import { Navigate, NavLink, Route, Routes } from 'react-router-dom'
+import { useState } from 'react'
+import { Navigate, NavLink, Route, Routes, useLocation } from 'react-router-dom'
+import { LanguageSwitcher } from '../components/LanguageSwitcher'
 import { Sidebar } from '../components/Sidebar'
 import { useAuth } from '../context/AuthContext'
 import { useBookings } from '../context/BookingContext'
+import { useI18n } from '../context/LanguageContext'
 import { formatPrice } from '../data/catalog'
+import { bookingEventTitle, formatDate, roleLabel, statusLabel } from '../i18n/messages'
 
-const items = [
-  { to: '/dashboard', label: 'Overview', end: true },
-  { to: '/dashboard/bookings', label: 'My bookings' },
-  { to: '/dashboard/profile', label: 'Profile' },
-  { to: '/book', label: 'New booking' },
-]
+function todayIso() {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 10)
+}
 
 function Overview() {
   const { user } = useAuth()
-  const { getUserBookings } = useBookings()
-  const bookings = user ? getUserBookings(user.id) : []
-  const upcoming = bookings.filter((b) => b.status !== 'cancelled')
+  const { bookings } = useBookings()
+  const { lang, t } = useI18n()
+  const location = useLocation()
+  const [justBooked, setJustBooked] = useState(
+    Boolean((location.state as { booked?: boolean } | null)?.booked),
+  )
+  const today = todayIso()
+  const upcoming = bookings
+    .filter(
+      (b) => (b.status === 'pending' || b.status === 'confirmed') && b.eventDate >= today,
+    )
+    .sort((a, b) => a.eventDate.localeCompare(b.eventDate))
 
   return (
     <div className="dash-panel">
-      <h1>Hello, {user?.name.split(' ')[0]}</h1>
-      <p className="lede">Your shoots, status, and studio details in one place.</p>
+      <h1>
+        {t.dash.hello} {user?.name.split(' ')[0]}
+      </h1>
+      <p className="lede">{t.dash.lede}</p>
+      {justBooked && (
+        <div className="toast" role="status">
+          <span>✓ {t.dash.booked}</span>
+          <button type="button" aria-label="×" onClick={() => setJustBooked(false)}>
+            ×
+          </button>
+        </div>
+      )}
       <div className="stat-row">
         <div className="stat">
-          <span>Bookings</span>
+          <span>{t.dash.bookingsStat}</span>
           <strong>{bookings.length}</strong>
         </div>
         <div className="stat">
-          <span>Active</span>
+          <span>{t.dash.upcoming}</span>
           <strong>{upcoming.length}</strong>
         </div>
         <div className="stat">
-          <span>Next date</span>
+          <span>{t.dash.next}</span>
           <strong>
-            {upcoming[0]?.eventDate
-              ? new Date(upcoming[0].eventDate).toLocaleDateString('en-GB', {
-                  day: 'numeric',
-                  month: 'short',
-                })
-              : '—'}
+            {upcoming[0] ? formatDate(upcoming[0].eventDate, lang) : '—'}
           </strong>
         </div>
       </div>
@@ -46,27 +63,31 @@ function Overview() {
         <table>
           <thead>
             <tr>
-              <th>Event</th>
-              <th>Package</th>
-              <th>Date</th>
-              <th>Total</th>
-              <th>Status</th>
+              <th>{t.dash.event}</th>
+              <th>{t.dash.package}</th>
+              <th>{t.dash.date}</th>
+              <th>{t.dash.total}</th>
+              <th>{t.dash.status}</th>
             </tr>
           </thead>
           <tbody>
             {bookings.length === 0 && (
               <tr>
-                <td colSpan={5}>No bookings yet. Start from the Book page.</td>
+                <td colSpan={5}>{t.dash.empty}</td>
               </tr>
             )}
             {bookings.slice(0, 5).map((b) => (
               <tr key={b.id}>
-                <td>{b.eventTypeName}</td>
-                <td>{b.packageName}</td>
-                <td>{b.eventDate}</td>
-                <td>{formatPrice(b.totalPrice)}</td>
                 <td>
-                  <span className={`status status-${b.status}`}>{b.status}</span>
+                  {bookingEventTitle(t, b.eventTypeId, b.customEventName, b.eventTypeName)}
+                </td>
+                <td>{b.packageName}</td>
+                <td>{formatDate(b.eventDate, lang)}</td>
+                <td>{formatPrice(b.totalPrice, lang)}</td>
+                <td>
+                  <span className={`status status-${b.status}`}>
+                    {statusLabel(t, b.status)}
+                  </span>
                 </td>
               </tr>
             ))}
@@ -78,29 +99,32 @@ function Overview() {
 }
 
 function BookingsList() {
-  const { user } = useAuth()
-  const { getUserBookings } = useBookings()
-  const bookings = user ? getUserBookings(user.id) : []
+  const { bookings } = useBookings()
+  const { lang, t } = useI18n()
 
   return (
     <div className="dash-panel">
-      <h1>My bookings</h1>
+      <h1>{t.dash.bookings}</h1>
       <div className="booking-list">
-        {bookings.length === 0 && <p>No bookings yet.</p>}
+        {bookings.length === 0 && <p>{t.dash.none}</p>}
         {bookings.map((b) => (
           <article key={b.id} className="booking-item">
             <div>
               <h3>
-                {b.eventTypeName} · {b.packageName}
+                {bookingEventTitle(t, b.eventTypeId, b.customEventName, b.eventTypeName)} ·{' '}
+                {b.packageName}
               </h3>
               <p>
-                {b.eventDate} · {b.hours}h · {b.location}
+                {formatDate(b.eventDate, lang)} · {b.hours}
+                {lang === 'ar' ? ' س' : 'h'} · {b.location}
               </p>
               {b.notes && <p className="muted">{b.notes}</p>}
             </div>
             <div className="booking-meta">
-              <strong>{formatPrice(b.totalPrice)}</strong>
-              <span className={`status status-${b.status}`}>{b.status}</span>
+              <strong>{formatPrice(b.totalPrice, lang)}</strong>
+              <span className={`status status-${b.status}`}>
+                {statusLabel(t, b.status)}
+              </span>
             </div>
           </article>
         ))}
@@ -111,27 +135,28 @@ function BookingsList() {
 
 function Profile() {
   const { user } = useAuth()
+  const { t } = useI18n()
   if (!user) return null
 
   return (
     <div className="dash-panel">
-      <h1>Profile</h1>
+      <h1>{t.dash.profile}</h1>
       <dl className="profile-grid">
         <div>
-          <dt>Name</dt>
+          <dt>{t.dash.name}</dt>
           <dd>{user.name}</dd>
         </div>
         <div>
-          <dt>Email</dt>
+          <dt>{t.dash.email}</dt>
           <dd>{user.email}</dd>
         </div>
         <div>
-          <dt>Phone</dt>
+          <dt>{t.dash.phone}</dt>
           <dd>{user.phone || '—'}</dd>
         </div>
         <div>
-          <dt>Role</dt>
-          <dd>{user.role}</dd>
+          <dt>{t.dash.role}</dt>
+          <dd>{roleLabel(t, user.role)}</dd>
         </div>
       </dl>
     </div>
@@ -139,26 +164,38 @@ function Profile() {
 }
 
 export function UserDashboard() {
-  const { user, logout } = useAuth()
+  const { user, loading, logout } = useAuth()
+  const { t } = useI18n()
 
-  if (!user) return <Navigate to="/login?next=/dashboard" replace />
+  if (loading) return <div className="page-loading" aria-busy="true" />
+  if (!user) return <Navigate to="/login" replace />
   if (user.role === 'admin') return <Navigate to="/admin" replace />
+
+  const items = [
+    { to: '/dashboard', label: t.dash.overview, end: true },
+    { to: '/dashboard/bookings', label: t.dash.bookings },
+    { to: '/dashboard/profile', label: t.dash.profile },
+    { to: '/book', label: t.dash.newBooking },
+  ]
 
   return (
     <div className="dash-shell">
       <Sidebar
-        title="My Studio"
+        title={t.dash.studio}
         items={items}
         footer={
           <button type="button" className="btn-outline btn-block" onClick={logout}>
-            Sign out
+            {t.dash.signOut}
           </button>
         }
       />
       <div className="dash-main">
         <header className="dash-top">
-          <NavLink to="/">← Back to site</NavLink>
-          <span>{user.email}</span>
+          <NavLink to="/">{t.dash.back}</NavLink>
+          <div className="dash-top-actions">
+            <LanguageSwitcher />
+            <span>{user.email}</span>
+          </div>
         </header>
         <Routes>
           <Route index element={<Overview />} />

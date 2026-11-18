@@ -1,14 +1,27 @@
 <!doctype html>
-<html lang="en">
+<html lang="ar" dir="rtl">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="Clicksy — premium event photography and film crews. Browse packages, build a live quote, book when ready."
+      content="كليكسي — تصوير وتوثيق سينمائي للمناسبات. تصفّحوا الباقات، ابنوا عرض السعر، واحجزوا عندما تجهزون."
     />
-    <title>Clicksy — Your night, framed.</title>
+    <title>Clicksy — ليلتكم في إطار.</title>
+    <script>
+      try {
+        var lang = localStorage.getItem('clicksy_lang')
+        if (lang !== 'en' && lang !== 'ar') lang = 'ar'
+        var root = document.documentElement
+        root.lang = lang
+        root.dir = lang === 'ar' ? 'rtl' : 'ltr'
+        document.title =
+          lang === 'ar'
+            ? 'Clicksy — ليلتكم في إطار.'
+            : 'Clicksy — Your night, framed.'
+      } catch (e) {}
+    </script>
   </head>
   <body>
     <div id="root"></div>

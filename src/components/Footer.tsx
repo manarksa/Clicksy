@@ -1,57 +1,65 @@
 import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext'
+import { useI18n } from '../context/LanguageContext'
 import { Logo } from './Logo'
 
+const copyrightYear = new Date().getFullYear()
+
 export function Footer() {
+  const { t } = useI18n()
+  const { user } = useAuth()
+
   return (
     <footer className="footer">
       <div className="footer-grid">
         <div className="footer-brand">
           <Logo light />
-          <p>
-            Event photography &amp; film for nights worth remembering.
-            White gloves. Black frames. Zero noise.
-          </p>
+          <p>{t.footer.blurb}</p>
         </div>
         <div>
-          <h4>Studio</h4>
+          <h4>{t.footer.studio}</h4>
           <ul>
             <li>
-              <a href="/#packages">Packages</a>
+              <Link to="/packages">{t.nav.packages}</Link>
             </li>
             <li>
-              <Link to="/book">Book a crew</Link>
+              <Link to="/book">{t.footer.bookCrew}</Link>
             </li>
             <li>
-              <a href="/#how">How it works</a>
+              <Link to={{ pathname: '/', hash: 'how' }}>{t.nav.how}</Link>
+            </li>
+            <li>
+              <Link to="/help">{t.nav.help}</Link>
             </li>
           </ul>
         </div>
         <div>
-          <h4>Account</h4>
+          <h4>{t.footer.account}</h4>
           <ul>
             <li>
-              <Link to="/login">Sign in</Link>
+              <Link to="/login">{t.nav.signIn}</Link>
             </li>
-            <li>
-              <Link to="/dashboard">My Studio</Link>
-            </li>
-            <li>
-              <Link to="/admin">Admin</Link>
-            </li>
+            {user && (
+              <li>
+                <Link to={user.role === 'admin' ? '/admin' : '/dashboard'}>{t.nav.desk}</Link>
+              </li>
+            )}
           </ul>
         </div>
         <div>
-          <h4>Contact</h4>
+          <h4>{t.footer.contact}</h4>
           <ul>
             <li>hello@clicksy.com</li>
             <li>+966 11 000 4455</li>
-            <li>Riyadh · Jeddah · Dammam</li>
+            <li>{t.footer.cities}</li>
           </ul>
         </div>
       </div>
       <div className="footer-bar">
-        <span>© {new Date().getFullYear()} Clicksy Studio</span>
-        <span className="footer-tag">Shoot. Edit. Deliver.</span>
+        <span>
+          © {copyrightYear} {t.footer.rights}
+        </span>
+        <span className="footer-tag">{t.footer.tag}</span>
       </div>
     </footer>
   )

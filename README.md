@@ -1,32 +1,45 @@
-# React + TypeScript + Vite
+# Clicksy
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+موقع حجز تصوير المناسبات — React + Vite للواجهة، وExpress + MySQL للخادم، وGmail لإرسال رموز الدخول.
 
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the Oxlint configuration
-
-If you are developing a production application, we recommend enabling type-aware lint rules by installing `oxlint-tsgolint` and editing `.oxlintrc.json`:
-
-```json
-{
-  "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["react", "typescript", "oxc"],
-  "options": {
-    "typeAware": true
-  },
-  "rules": {
-    "react/rules-of-hooks": "error",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }]
-  }
-}
+```
+المتصفح (React)  ──/api──►  server/ (Express)  ──►  MySQL (قاعدة clicksy)
+                                   └──────────►  Gmail (رموز الدخول وإشعارات الحجز)
 ```
 
-See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+## التشغيل
+
+0. **مرة واحدة فقط:** افتحوا MySQL Workbench بحساب root، والصقوا محتوى [server/setup-root.sql](server/setup-root.sql) بعد تغيير كلمة المرور فيه، ثم شغّلوه (⚡). ينشئ قاعدة `clicksy` ويعطي `clicksy_user` صلاحيات عليها فقط.
+1. عبّئوا ملف `.env` (انسخوه من `.env.example` إذا لم يكن موجودًا):
+   - `DB_PASSWORD` — كلمة مرور `clicksy_user` (نفسها التي في setup-root.sql).
+   - `OWNER_EMAIL` و`OWNER_PASSWORD` — حساب صاحب العمل.
+   - `SMTP_USER` و`SMTP_PASS` و`MAIL_FROM` — بريد Gmail وكلمة مرور التطبيقات.
+2. شغّلوا:
+   ```bash
+   npm install
+   npm run dev
+   ```
+3. افتحوا http://localhost:5173
+
+للتأكد أن الربط حقيقي: `npm run test:db` (ينشئ عميل تجربة ويحجز ويقرأ من MySQL ثم يحذف بيانات التجربة فقط).
+
+يُنشئ الخادم الجداول الناقصة وحساب صاحب العمل تلقائيًا أول مرة (`server/schema.sql`).
+
+## الدخول
+
+| الدور | كيف |
+|---|---|
+| **صاحب العمل** | البريد وكلمة المرور من `.env` ← رمز من 6 أرقام يصل لبريده ← لوحة الإدارة `/admin` |
+| **عميل** | «إنشاء حساب» ← رمز يصل لبريده ← لوحة العميل `/dashboard`. بعدها يدخل بالبريد وكلمة المرور + رمز جديد كل مرة |
+
+بدون إعداد Gmail تُطبع الرموز في نافذة الطرفية اللي فيها `npm run dev` بدل إرسالها.
+
+## الأوامر
+
+| الأمر | الوظيفة |
+|---|---|
+| `npm run dev` | الواجهة (5173) + الخادم (4000) معًا |
+| `npm run build` | فحص الأنواع وبناء الموقع في `dist/` |
+| `npm start` | تشغيل الخادم وحده مع الموقع المبني على http://localhost:4000 |
+| `npm run test:db` | اختبار حقيقي: حساب + دخول + حجز + قراءة من MySQL |
+| `npm run lint` | فحص الكود |

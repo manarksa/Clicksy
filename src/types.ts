@@ -36,6 +36,7 @@ export interface Booking {
   packageName: string
   eventTypeId: string
   eventTypeName: string
+  customEventName?: string
   hours: number
   eventDate: string
   location: string
@@ -48,6 +49,7 @@ export interface Booking {
 export interface BookingDraft {
   packageId: string
   eventTypeId: string
+  customEventName?: string
   hours: number
   eventDate: string
   location: string

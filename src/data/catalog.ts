@@ -1,3 +1,4 @@
+import type { Lang } from '../i18n/messages'
 import type { EventType, Package } from '../types'
 
 export const packages: Package[] = [
@@ -77,12 +78,18 @@ export const eventTypes: EventType[] = [
     name: 'Private Party',
     description: 'Intimate dinners, rooftops, and custom nights.',
   },
+  {
+    id: 'other',
+    name: 'Other',
+    description: 'Name the occasion yourself.',
+  },
 ]
 
 export const currency = 'SAR'
 
-export function formatPrice(amount: number): string {
-  return `${amount.toLocaleString('en-US')} ${currency}`
+export function formatPrice(amount: number, lang: Lang): string {
+  const formatted = amount.toLocaleString('en-US')
+  return lang === 'ar' ? `${formatted} ر.س` : `${formatted} ${currency}`
 }
 
 export function estimateTotal(hourlyRate: number, hours: number): number {

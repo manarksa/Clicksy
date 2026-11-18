@@ -2,133 +2,96 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useState,
   type ReactNode,
 } from 'react'
+import { api, errorCode } from '../api'
 import type { User } from '../types'
 
-const USERS_KEY = 'clicksy_users'
-const SESSION_KEY = 'clicksy_session'
-
-const seedUsers: User[] = [
-  {
-    id: 'admin-1',
-    name: 'Studio Admin',
-    email: 'admin@clicksy.com',
-    phone: '+966 50 000 0000',
-    role: 'admin',
-  },
-  {
-    id: 'user-1',
-    name: 'Sara Alharbi',
-    email: 'sara@email.com',
-    phone: '+966 55 111 2222',
-    role: 'user',
-  },
-]
-
-function loadUsers(): User[] {
-  const raw = localStorage.getItem(USERS_KEY)
-  if (!raw) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(seedUsers))
-    return seedUsers
-  }
-  try {
-    return JSON.parse(raw) as User[]
-  } catch {
-    return seedUsers
-  }
-}
-
-function loadSession(): User | null {
-  const id = localStorage.getItem(SESSION_KEY)
-  if (!id) return null
-  return loadUsers().find((u) => u.id === id) ?? null
-}
+type Result = { ok: true; user?: User } | { ok: false; error: string }
 
 interface AuthContextValue {
   user: User | null
-  users: User[]
-  login: (
-    email: string,
-    password: string,
-  ) => { ok: boolean; error?: string; user?: User }
+  /** True until the first "who am I?" check with the server finishes. */
+  loading: boolean
+  /** Step 1: checks the password and emails a 6-digit code. */
+  login: (email: string, password: string) => Promise<Result>
+  /** Step 1 for new clients: creates the account and emails a code. */
   register: (data: {
     name: string
     email: string
     phone: string
     password: string
-  }) => { ok: boolean; error?: string; user?: User }
-  logout: () => void
+  }) => Promise<Result>
+  /** Step 2: checks the code and starts the session. */
+  verify: (email: string, code: string) => Promise<Result>
+  resend: (email: string) => Promise<Result>
+  logout: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
 
-export function AuthProvider({ children }: { children: ReactNode }) {
-  const [users, setUsers] = useState<User[]>(loadUsers)
-  const [user, setUser] = useState<User | null>(loadSession)
+async function attempt<T>(run: () => Promise<T>): Promise<{ ok: true; value: T } | { ok: false; error: string }> {
+  try {
+    return { ok: true, value: await run() }
+  } catch (err) {
+    return { ok: false, error: errorCode(err) }
+  }
+}
 
-  const persistUsers = useCallback((next: User[]) => {
-    setUsers(next)
-    localStorage.setItem(USERS_KEY, JSON.stringify(next))
+export function AuthProvider({ children }: { children: ReactNode }) {
+  const [user, setUser] = useState<User | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let alive = true
+    api<{ user: User }>('/auth/me')
+      .then((data) => alive && setUser(data.user))
+      .catch(() => alive && setUser(null))
+      .finally(() => alive && setLoading(false))
+    return () => {
+      alive = false
+    }
   }, [])
 
-  const login = useCallback(
-    (email: string, _password: string) => {
-      const found = users.find(
-        (u) => u.email.toLowerCase() === email.trim().toLowerCase(),
-      )
-      if (!found) {
-        return { ok: false, error: 'No account found with that email.' }
-      }
-      setUser(found)
-      localStorage.setItem(SESSION_KEY, found.id)
-      return { ok: true, user: found }
-    },
-    [users],
-  )
+  const login = useCallback(async (email: string, password: string): Promise<Result> => {
+    if (!email.trim() || !password) return { ok: false, error: 'required' }
+    const r = await attempt(() => api('/auth/login', { body: { email, password } }))
+    return r.ok ? { ok: true } : r
+  }, [])
 
   const register = useCallback(
-    (data: {
-      name: string
-      email: string
-      phone: string
-      password: string
-    }) => {
-      if (!data.name.trim() || !data.email.trim()) {
-        return { ok: false, error: 'Name and email are required.' }
-      }
-      const exists = users.some(
-        (u) => u.email.toLowerCase() === data.email.trim().toLowerCase(),
-      )
-      if (exists) {
-        return { ok: false, error: 'An account with this email already exists.' }
-      }
-      const nextUser: User = {
-        id: `user-${Date.now()}`,
-        name: data.name.trim(),
-        email: data.email.trim().toLowerCase(),
-        phone: data.phone.trim(),
-        role: 'user',
-      }
-      const next = [...users, nextUser]
-      persistUsers(next)
-      setUser(nextUser)
-      localStorage.setItem(SESSION_KEY, nextUser.id)
-      return { ok: true, user: nextUser }
+    async (data: { name: string; email: string; phone: string; password: string }): Promise<Result> => {
+      if (!data.name.trim() || !data.email.trim()) return { ok: false, error: 'required' }
+      if (data.password.length < 6) return { ok: false, error: 'short' }
+      const r = await attempt(() => api('/auth/register', { body: data }))
+      return r.ok ? { ok: true } : r
     },
-    [persistUsers, users],
+    [],
   )
 
-  const logout = useCallback(() => {
+  const verify = useCallback(async (email: string, code: string): Promise<Result> => {
+    const r = await attempt(() => api<{ user: User }>('/auth/verify', { body: { email, code } }))
+    if (!r.ok) return r
+    setUser(r.value.user)
+    return { ok: true, user: r.value.user }
+  }, [])
+
+  const resend = useCallback(async (email: string): Promise<Result> => {
+    const r = await attempt(() => api('/auth/resend', { body: { email } }))
+    return r.ok ? { ok: true } : r
+  }, [])
+
+  const logout = useCallback(async () => {
+    await api('/auth/logout', { method: 'POST' }).catch(() => {})
     setUser(null)
-    localStorage.removeItem(SESSION_KEY)
   }, [])
 
   const value = useMemo(
-    () => ({ user, users, login, register, logout }),
-    [user, users, login, register, logout],
+    () => ({ user, loading, login, register, verify, resend, logout }),
+    [user, loading, login, register, verify, resend, logout],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

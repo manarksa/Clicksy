@@ -4,25 +4,44 @@ import { Footer } from '../components/Footer'
 import { Navbar } from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import { useBookings } from '../context/BookingContext'
+import { useI18n } from '../context/LanguageContext'
 import {
   estimateTotal,
   eventTypes,
   formatPrice,
   packages,
 } from '../data/catalog'
+import { errorCode } from '../api'
+import { eventCopy, fill, packageCopy } from '../i18n/messages'
 import type { BookingDraft } from '../types'
 
-const steps = ['Package', 'Event', 'Hours', 'Details'] as const
+const stepIds = ['package', 'event', 'hours', 'details'] as const
+const MAX_HOURS = 16
+
+function todayIso() {
+  const now = new Date()
+  now.setMinutes(now.getMinutes() - now.getTimezoneOffset())
+  return now.toISOString().slice(0, 10)
+}
+
+function maxDateIso() {
+  return `${new Date().getFullYear() + 2}-12-31`
+}
+
+function validPackageId(id: string | null | undefined) {
+  return id && packages.some((p) => p.id === id) ? id : null
+}
 
 export function Book() {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
   const { draft, saveDraft, createBooking } = useBookings()
+  const { lang, t } = useI18n()
 
   const [step, setStep] = useState(0)
   const [packageId, setPackageId] = useState(
-    params.get('package') || draft?.packageId || packages[1].id,
+    validPackageId(params.get('package')) ?? validPackageId(draft?.packageId) ?? packages[1].id,
   )
   const [eventTypeId, setEventTypeId] = useState(
     draft?.eventTypeId || eventTypes[0].id,
@@ -31,7 +50,12 @@ export function Book() {
   const [eventDate, setEventDate] = useState(draft?.eventDate || '')
   const [location, setLocation] = useState(draft?.location || '')
   const [notes, setNotes] = useState(draft?.notes || '')
-  const [message, setMessage] = useState('')
+  const [customEventName, setCustomEventName] = useState(draft?.customEventName || '')
+  const [eventNameError, setEventNameError] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [messageKey, setMessageKey] = useState<'' | 'needDetails' | 'failed'>(
+    '',
+  )
 
   const selectedPackage = useMemo(
     () => packages.find((p) => p.id === packageId) ?? packages[0],
@@ -41,20 +65,17 @@ export function Book() {
     () => eventTypes.find((e) => e.id === eventTypeId) ?? eventTypes[0],
     [eventTypeId],
   )
+  const selectedEventCopy = eventCopy(t, selectedEvent.id)
 
-  const clampedHours = Math.max(hours, selectedPackage.minHours)
+  const clampedHours = Math.min(MAX_HOURS, Math.max(hours, selectedPackage.minHours))
   const total = estimateTotal(selectedPackage.hourlyRate, clampedHours)
-
-  useEffect(() => {
-    if (hours < selectedPackage.minHours) {
-      setHours(selectedPackage.minHours)
-    }
-  }, [hours, selectedPackage.minHours])
+  const price = (amount: number) => formatPrice(amount, lang)
 
   function buildDraft(): BookingDraft {
     return {
       packageId,
       eventTypeId,
+      customEventName: eventTypeId === 'other' ? customEventName.trim() : '',
       hours: clampedHours,
       eventDate,
       location,
@@ -67,19 +88,29 @@ export function Book() {
   }
 
   function next() {
+    if (step === 1 && eventTypeId === 'other' && !customEventName.trim()) {
+      setEventNameError(true)
+      return
+    }
+    setEventNameError(false)
     persistDraft()
-    setStep((s) => Math.min(s + 1, steps.length - 1))
+    setStep((s) => Math.min(s + 1, stepIds.length - 1))
   }
 
   function back() {
     setStep((s) => Math.max(s - 1, 0))
   }
 
-  function handleConfirm(e: FormEvent) {
+  async function handleConfirm(e: FormEvent) {
     e.preventDefault()
     const data = buildDraft()
-    if (!data.eventDate || !data.location.trim()) {
-      setMessage('Please add an event date and location.')
+    if (data.eventTypeId === 'other' && !data.customEventName?.trim()) {
+      setEventNameError(true)
+      setStep(1)
+      return
+    }
+    if (!data.eventDate || data.eventDate < todayIso() || data.eventDate.length !== 10 || !data.location.trim()) {
+      setMessageKey('needDetails')
       return
     }
     saveDraft(data)
@@ -89,19 +120,35 @@ export function Book() {
       return
     }
 
-    createBooking(user, data)
-    setMessage('Booking submitted. We will confirm shortly.')
-    navigate(user.role === 'admin' ? '/admin' : '/dashboard')
+    if (user.role === 'admin') {
+      navigate('/admin')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      await createBooking(data)
+    } catch (err) {
+      setSubmitting(false)
+      setMessageKey(errorCode(err) === 'needDetails' ? 'needDetails' : 'failed')
+      return
+    }
+    navigate('/dashboard', { state: { booked: true } })
   }
 
   const confirming = useRef(false)
   useEffect(() => {
     const intent = params.get('intent')
-    if (intent === 'confirm' && user && draft && !confirming.current) {
-      confirming.current = true
-      createBooking(user, draft)
-      navigate(user.role === 'admin' ? '/admin' : '/dashboard')
+    if (intent !== 'confirm' || !user || confirming.current) return
+    confirming.current = true
+    if (user.role === 'admin' || !draft) {
+      navigate(user.role === 'admin' ? '/admin' : '/book', { replace: true })
+      return
     }
+    createBooking(draft)
+      .then(() => navigate('/dashboard', { replace: true, state: { booked: true } }))
+      // Stay on the form so the client can fix the draft.
+      .catch(() => navigate('/book', { replace: true }))
   }, [params, user, draft, createBooking, navigate])
 
   return (
@@ -110,24 +157,21 @@ export function Book() {
       <main className="book-page">
         <div className="book-layout">
           <div className="book-main">
-            <p className="eyebrow">Booking</p>
-            <h1>Compose your night</h1>
-            <p className="lede">
-              Browse every option freely. Sign in only when you are ready to
-              lock the booking.
-            </p>
+            <p className="eyebrow">{t.book.eyebrow}</p>
+            <h1>{t.book.title}</h1>
+            <p className="lede">{t.book.lede}</p>
 
-            <ol className="stepper" aria-label="Booking steps">
-              {steps.map((label, i) => (
+            <ol className="stepper" aria-label={t.book.stepsLabel}>
+              {stepIds.map((id, i) => (
                 <li
-                  key={label}
+                  key={id}
                   className={
                     i === step ? 'active' : i < step ? 'done' : undefined
                   }
                 >
                   <button type="button" onClick={() => setStep(i)}>
                     <span>{String(i + 1).padStart(2, '0')}</span>
-                    {label}
+                    {t.book.steps[id]}
                   </button>
                 </li>
               ))}
@@ -135,46 +179,78 @@ export function Book() {
 
             {step === 0 && (
               <div className="choice-grid">
-                {packages.map((pkg) => (
-                  <button
-                    key={pkg.id}
-                    type="button"
-                    className={`choice-card${packageId === pkg.id ? ' selected' : ''}`}
-                    onClick={() => setPackageId(pkg.id)}
-                  >
-                    <strong>{pkg.name}</strong>
-                    <span>{pkg.tagline}</span>
-                    <em>
-                      {formatPrice(pkg.hourlyRate)} / hr · min {pkg.minHours}h
-                    </em>
-                  </button>
-                ))}
+                {packages.map((pkg) => {
+                  const copy = packageCopy(t, pkg.id)
+                  return (
+                    <button
+                      key={pkg.id}
+                      type="button"
+                      className={`choice-card${packageId === pkg.id ? ' selected' : ''}`}
+                      onClick={() => setPackageId(pkg.id)}
+                    >
+                      <strong>{pkg.name}</strong>
+                      <span>{copy?.tagline}</span>
+                      <em>
+                        {fill(t.book.choiceMeta, {
+                          price: price(pkg.hourlyRate),
+                          hours: pkg.minHours,
+                        })}
+                      </em>
+                    </button>
+                  )
+                })}
               </div>
             )}
 
             {step === 1 && (
-              <div className="choice-grid events">
-                {eventTypes.map((event) => (
-                  <button
-                    key={event.id}
-                    type="button"
-                    className={`choice-card${eventTypeId === event.id ? ' selected' : ''}`}
-                    onClick={() => setEventTypeId(event.id)}
-                  >
-                    <strong>{event.name}</strong>
-                    <span>{event.description}</span>
-                  </button>
-                ))}
+              <div>
+                <div className="choice-grid events">
+                {eventTypes.map((event) => {
+                  const copy = eventCopy(t, event.id)
+                  return (
+                    <button
+                      key={event.id}
+                      type="button"
+                      className={`choice-card${eventTypeId === event.id ? ' selected' : ''}`}
+                      onClick={() => setEventTypeId(event.id)}
+                    >
+                      <strong>{copy?.name}</strong>
+                      <span>{copy?.description}</span>
+                    </button>
+                  )
+                })}
+                </div>
+                {eventTypeId === 'other' && (
+                  <label className="other-event">
+                    {t.book.eventName}
+                    <input
+                      type="text"
+                      required
+                      value={customEventName}
+                      placeholder={t.book.eventNamePh}
+                      maxLength={80}
+                      onChange={(e) => {
+                        setCustomEventName(e.target.value)
+                        if (e.target.value.trim()) setEventNameError(false)
+                      }}
+                    />
+                  </label>
+                )}
+                {eventNameError && (
+                  <p className="form-msg error">{t.book.needEventName}</p>
+                )}
               </div>
             )}
 
             {step === 2 && (
               <div className="hours-panel">
                 <label htmlFor="hours">
-                  Coverage hours
+                  {t.book.hours}
                   <span>
-                    Minimum {selectedPackage.minHours}h for{' '}
-                    {selectedPackage.name}
+                    {fill(t.book.hoursHint, {
+                      min: selectedPackage.minHours,
+                      name: selectedPackage.name,
+                    })}
                   </span>
                 </label>
                 <div className="hours-control">
@@ -182,9 +258,9 @@ export function Book() {
                     type="button"
                     className="btn-outline"
                     onClick={() =>
-                      setHours((h) => Math.max(selectedPackage.minHours, h - 1))
+                      setHours(Math.max(selectedPackage.minHours, clampedHours - 1))
                     }
-                    aria-label="Decrease hours"
+                    aria-label={t.book.decrease}
                   >
                     −
                   </button>
@@ -192,22 +268,17 @@ export function Book() {
                     id="hours"
                     type="number"
                     min={selectedPackage.minHours}
-                    max={16}
+                    max={MAX_HOURS}
                     value={clampedHours}
                     onChange={(e) =>
-                      setHours(
-                        Math.max(
-                          selectedPackage.minHours,
-                          Number(e.target.value) || selectedPackage.minHours,
-                        ),
-                      )
+                      setHours(Number(e.target.value) || selectedPackage.minHours)
                     }
                   />
                   <button
                     type="button"
                     className="btn-outline"
-                    onClick={() => setHours((h) => Math.min(16, h + 1))}
-                    aria-label="Increase hours"
+                    onClick={() => setHours(Math.min(MAX_HOURS, clampedHours + 1))}
+                    aria-label={t.book.increase}
                   >
                     +
                   </button>
@@ -216,7 +287,7 @@ export function Book() {
                   <div
                     className="hours-fill"
                     style={{
-                      width: `${((clampedHours - 1) / 15) * 100}%`,
+                      width: `${(clampedHours / MAX_HOURS) * 100}%`,
                     }}
                   />
                 </div>
@@ -226,40 +297,42 @@ export function Book() {
             {step === 3 && (
               <form className="details-form" onSubmit={handleConfirm}>
                 <label>
-                  Event date
+                  {t.book.date}
                   <input
                     type="date"
                     required
+                    min={todayIso()}
+                    max={maxDateIso()}
                     value={eventDate}
                     onChange={(e) => setEventDate(e.target.value)}
                   />
                 </label>
                 <label>
-                  Location
+                  {t.book.location}
                   <input
                     type="text"
                     required
-                    placeholder="Venue or city"
+                    placeholder={t.book.locationPh}
                     value={location}
                     onChange={(e) => setLocation(e.target.value)}
                   />
                 </label>
                 <label>
-                  Notes for the crew
+                  {t.book.notes}
                   <textarea
                     rows={4}
-                    placeholder="Timeline, dress code, must-have shots…"
+                    placeholder={t.book.notesPh}
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </label>
-                {message && <p className="form-msg">{message}</p>}
+                {messageKey && <p className="form-msg">{t.book[messageKey]}</p>}
                 <div className="form-actions">
                   <button type="button" className="btn-outline" onClick={back}>
-                    Back
+                    {t.book.back}
                   </button>
-                  <button type="submit" className="btn">
-                    {user ? 'Confirm booking' : 'Sign in to confirm'}
+                  <button type="submit" className="btn" disabled={submitting}>
+                    {user ? t.book.confirm : t.book.signInConfirm}
                   </button>
                 </div>
               </form>
@@ -273,43 +346,49 @@ export function Book() {
                   onClick={back}
                   disabled={step === 0}
                 >
-                  Back
+                  {t.book.back}
                 </button>
                 <button type="button" className="btn" onClick={next}>
-                  Continue
+                  {t.book.continue}
                 </button>
               </div>
             )}
           </div>
 
           <aside className="quote-card" aria-live="polite">
-            <p className="quote-label">Live estimate</p>
-            <h2>{formatPrice(total)}</h2>
+            <p className="quote-label">{t.book.estimate}</p>
+            <h2>{price(total)}</h2>
             <ul>
               <li>
-                <span>Package</span>
+                <span>{t.book.package}</span>
                 <strong>{selectedPackage.name}</strong>
               </li>
               <li>
-                <span>Event</span>
-                <strong>{selectedEvent.name}</strong>
+                <span>{t.book.event}</span>
+                <strong>
+                  {eventTypeId === 'other'
+                    ? customEventName.trim() || selectedEventCopy?.name
+                    : selectedEventCopy?.name}
+                </strong>
               </li>
               <li>
-                <span>Hours</span>
-                <strong>{clampedHours}h</strong>
+                <span>{t.book.hoursLabel}</span>
+                <strong>{fill(t.book.hoursValue, { hours: clampedHours })}</strong>
               </li>
               <li>
-                <span>Rate</span>
-                <strong>{formatPrice(selectedPackage.hourlyRate)}/hr</strong>
+                <span>{t.book.rate}</span>
+                <strong>
+                  {fill(t.book.rateValue, {
+                    price: price(selectedPackage.hourlyRate),
+                  })}
+                </strong>
               </li>
             </ul>
-            <p className="quote-note">
-              Preliminary market-aligned pricing. Final quote confirmed by the
-              studio after review.
-            </p>
+            <p className="quote-note">{t.book.note}</p>
             {!user && (
               <p className="quote-auth">
-                Already have an account? <Link to="/login?next=/book">Sign in</Link>
+                {t.book.haveAccount}{' '}
+                <Link to="/login?next=/book">{t.book.signIn}</Link>
               </p>
             )}
           </aside>
