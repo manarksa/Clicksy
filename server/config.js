@@ -17,8 +17,17 @@ function parseAddress(value) {
 
 const from = env.MAIL_FROM || env.SMTP_USER || 'Clicksy <no-reply@clicksy.local>'
 
+// A private-CA host (e.g. Aiven) needs its CA file. Fail loudly if the path is wrong,
+// instead of a vague "self-signed certificate" error later.
+if (on(env.DB_SSL) && env.DB_SSL_CA && !existsSync(env.DB_SSL_CA)) {
+  console.error(`✗ DB_SSL_CA points to "${env.DB_SSL_CA}", but that file does not exist.`)
+  process.exit(1)
+}
+
 export const config = {
   port: Number(env.PORT || 4000),
+  /** READ_ONLY=true pauses every change (sign-up, sign-in, booking) — used while moving databases. */
+  readOnly: on(env.READ_ONLY),
   production: env.NODE_ENV === 'production',
   db: {
     host: env.DB_HOST || 'localhost',
@@ -31,7 +40,7 @@ export const config = {
       ? {
           minVersion: 'TLSv1.2',
           rejectUnauthorized: true,
-          ...(env.DB_SSL_CA && existsSync(env.DB_SSL_CA) ? { ca: readFileSync(env.DB_SSL_CA) } : {}),
+          ...(env.DB_SSL_CA ? { ca: readFileSync(env.DB_SSL_CA) } : {}),
         }
       : undefined,
   },

@@ -56,9 +56,40 @@ export async function describeServer(target) {
  */
 export async function initDb() {
   pool = createDbPool()
+  if (config.readOnly) guardReadOnly(pool)
   dbFlavor = await describeServer(pool)
+  if (config.readOnly) {
+    // Maintenance: only check the tables, never create or change anything (not even the owner).
+    await checkColumns(pool)
+    return
+  }
   await applySchema(pool)
   await ensureOwner()
+}
+
+const READ_SQL = /^\s*(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN|WITH)\b/i
+
+/**
+ * READ_ONLY safety net under the routes: any statement that is not a read fails, whichever code
+ * sends it. MySQL/Aiven also enforce it in the database itself (TiDB does not support that).
+ */
+function guardReadOnly(target) {
+  const block = (sql) => {
+    const text = typeof sql === 'string' ? sql : sql?.sql
+    if (!READ_SQL.test(String(text ?? ''))) {
+      throw Object.assign(new Error('READ_ONLY is on: write refused'), { code: 'READ_ONLY' })
+    }
+  }
+  for (const method of ['query', 'execute']) {
+    const original = target[method].bind(target)
+    target[method] = (sql, ...rest) => {
+      block(sql)
+      return original(sql, ...rest)
+    }
+  }
+  target.pool.on('connection', (conn) => {
+    conn.query('SET SESSION transaction_read_only = 1', () => {}) // ignored where unsupported (TiDB)
+  })
 }
 
 async function checkColumns(target) {
@@ -88,7 +119,7 @@ async function ensureOwner() {
     console.warn('⚠  OWNER_EMAIL / OWNER_PASSWORD are not set — no owner account yet.')
     return
   }
-  const [rows] = await pool.query('SELECT id, password_hash FROM users WHERE email = ?', [email])
+  const [rows] = await pool.query('SELECT id, password_hash, role, email_verified FROM users WHERE email = ?', [email])
   if (rows.length === 0) {
     const hash = await bcrypt.hash(password, 12)
     await pool.query(
@@ -101,6 +132,7 @@ async function ensureOwner() {
   }
   // The env settings are the source of truth for the owner: keep role and password in sync.
   const same = await bcrypt.compare(password, rows[0].password_hash)
+  if (same && rows[0].role === 'admin' && rows[0].email_verified) return // nothing to change
   const hash = same ? rows[0].password_hash : await bcrypt.hash(password, 12)
   await pool.query(
     `UPDATE users SET role = 'admin', email_verified = 1, password_hash = ? WHERE id = ?`,

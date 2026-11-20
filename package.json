@@ -14,7 +14,9 @@
     "test:db": "node server/smoke-test.js",
     "test:tidb": "node server/smoke-test.js --env .env.tidb",
     "db:copy": "node server/copy-to-cloud.js",
-    "db:pull": "node server/copy-to-cloud.js --from-cloud"
+    "db:pull": "node server/copy-to-cloud.js --from-cloud",
+    "db:verify": "node server/db-sync.js",
+    "db:sync": "node server/db-sync.js --apply"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

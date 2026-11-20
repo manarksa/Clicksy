@@ -36,4 +36,5 @@ createApp().listen(config.port, '0.0.0.0', () => {
   console.log(`✓ ${dbFlavor} connected as "${config.db.user}" (database "${config.db.database}"${config.db.ssl ? ', TLS' : ''})`)
   console.log(`✓ Running on port ${config.port}${config.production ? ' (production)' : ''} · settings: ${process.env.RENDER ? 'host environment' : envFile}`)
   console.log(mail[mailProvider()])
+  if (config.readOnly) console.log('⚠  READ_ONLY is on — sign-ups, sign-ins and bookings are paused.')
 })

@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto'
 import { existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -6,6 +7,10 @@ import { authRouter, loadUser } from './auth.js'
 import { bookingsRouter } from './bookings.js'
 import { config } from './config.js'
 import { pool } from './db.js'
+
+/** Changes on every start: during a move it shows whether an old server is still answering. */
+const BOOT_ID = randomBytes(4).toString('hex')
+const VERSION = (process.env.RENDER_GIT_COMMIT || 'local').slice(0, 7)
 
 /** The Express app with every route. index.js starts it; smoke-test.js tests it. */
 export function createApp() {
@@ -19,11 +24,20 @@ export function createApp() {
   app.get('/api/health', async (_req, res) => {
     try {
       await pool.query('SELECT 1')
-      res.json({ ok: true })
+      res.setHeader('Cache-Control', 'no-store')
+      res.json({ ok: true, readOnly: config.readOnly, version: VERSION, boot: BOOT_ID })
     } catch {
       res.status(503).json({ ok: false })
     }
   })
+
+  // Maintenance while the database moves: reading works, nothing can be written.
+  if (config.readOnly) {
+    app.use('/api', (req, res, next) => {
+      if (req.method === 'GET' || req.method === 'HEAD') return next()
+      res.status(503).json({ error: 'maintenance' })
+    })
+  }
 
   app.use('/api', loadUser)
   app.use('/api/auth', authRouter)

@@ -53,7 +53,7 @@ export function Book() {
   const [customEventName, setCustomEventName] = useState(draft?.customEventName || '')
   const [eventNameError, setEventNameError] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [messageKey, setMessageKey] = useState<'' | 'needDetails' | 'failed'>(
+  const [messageKey, setMessageKey] = useState<'' | 'needDetails' | 'failed' | 'maintenance'>(
     '',
   )
 
@@ -130,7 +130,8 @@ export function Book() {
       await createBooking(data)
     } catch (err) {
       setSubmitting(false)
-      setMessageKey(errorCode(err) === 'needDetails' ? 'needDetails' : 'failed')
+      const code = errorCode(err)
+      setMessageKey(code === 'needDetails' || code === 'maintenance' ? code : 'failed')
       return
     }
     navigate('/dashboard', { state: { booked: true } })
@@ -326,7 +327,11 @@ export function Book() {
                     onChange={(e) => setNotes(e.target.value)}
                   />
                 </label>
-                {messageKey && <p className="form-msg">{t.book[messageKey]}</p>}
+                {messageKey && (
+                  <p className="form-msg">
+                    {messageKey === 'maintenance' ? t.errors.maintenance : t.book[messageKey]}
+                  </p>
+                )}
                 <div className="form-actions">
                   <button type="button" className="btn-outline" onClick={back}>
                     {t.book.back}

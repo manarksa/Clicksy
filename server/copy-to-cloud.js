@@ -39,7 +39,14 @@ function dbFrom(file) {
     user: e.DB_USER,
     password: e.DB_PASSWORD || '',
     database: e.DB_NAME || 'clicksy',
-    ssl: /^(1|true|yes)$/i.test(e.DB_SSL || '') ? { minVersion: 'TLSv1.2', rejectUnauthorized: true } : undefined,
+    ssl: /^(1|true|yes)$/i.test(e.DB_SSL || '')
+      ? {
+          minVersion: 'TLSv1.2',
+          rejectUnauthorized: true,
+          // Aiven and other private-CA hosts: DB_SSL_CA=path/to/ca.pem
+          ...(e.DB_SSL_CA && existsSync(e.DB_SSL_CA) ? { ca: readFileSync(e.DB_SSL_CA) } : {}),
+        }
+      : undefined,
   }
 }
 

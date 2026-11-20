@@ -68,7 +68,9 @@ function BookingActions({ booking, compact = false }: { booking: Booking; compac
     } catch (err) {
       // State in the list is untouched: it only changes after MySQL saved it.
       const code = errorCode(err)
-      setError(code === 'network' ? t.errors.network : t.admin.saveFailed)
+      setError(
+        code === 'network' ? t.errors.network : code === 'maintenance' ? t.errors.maintenance : t.admin.saveFailed,
+      )
     } finally {
       inFlight.current = false
       setBusy(null)
