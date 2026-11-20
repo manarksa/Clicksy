@@ -5,6 +5,7 @@ import { Logo } from '../components/Logo'
 import { Navbar } from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import { useI18n } from '../context/LanguageContext'
+import { suggestEmail } from '../data/emailTypos'
 import { fill, type AuthErrorCode, type Messages } from '../i18n/messages'
 import type { UserRole } from '../types'
 
@@ -40,6 +41,7 @@ export function Login() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<AuthErrorCode | string>('')
   const [notice, setNotice] = useState('')
+  const [suggestion, setSuggestion] = useState<string | null>(null)
   const [redirecting, setRedirecting] = useState(false)
 
   // Already signed in (and not in the middle of our own redirect): open the right desk.
@@ -62,12 +64,21 @@ export function Login() {
   function switchMode(nextMode: 'login' | 'register') {
     setMode(nextMode)
     setError('')
+    setSuggestion(null)
   }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError('')
     setNotice('')
+    setSuggestion(null)
+    // Catch gamil.com / gmail.con before the code is sent to an address that cannot receive it.
+    const fixed = mode === 'register' ? suggestEmail(email) : null
+    if (fixed) {
+      setError('emailTypo')
+      setSuggestion(fixed)
+      return
+    }
     setBusy(true)
     const result =
       mode === 'login'
@@ -130,6 +141,7 @@ export function Login() {
                 </div>
                 <h1>{t.login.codeTitle}</h1>
                 <p className="auth-lede">{fill(t.login.codeSent, { email })}</p>
+                <p className="auth-note">{t.login.checkSpam}</p>
                 <label>
                   {t.login.code}
                   <input
@@ -259,6 +271,23 @@ export function Login() {
                   {error && (
                     <p className="form-msg error" role="alert">
                       {errorText(t, error)}
+                      {suggestion && (
+                        <>
+                          {' '}
+                          <span dir="auto">{fill(t.login.didYouMean, { email: suggestion })}</span>{' '}
+                          <button
+                            type="button"
+                            className="link-btn"
+                            onClick={() => {
+                              setEmail(suggestion)
+                              setSuggestion(null)
+                              setError('')
+                            }}
+                          >
+                            {t.login.useSuggestion}
+                          </button>
+                        </>
+                      )}
                     </p>
                   )}
                   <button type="submit" className="btn btn-lg btn-block" disabled={busy}>

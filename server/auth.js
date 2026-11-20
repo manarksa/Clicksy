@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { Router } from 'express'
 import { config } from './config.js'
 import { pool } from './db.js'
+import { suggestEmail } from '../src/data/emailTypos.ts'
 import { codeEmail } from './mailer.js'
 
 const COOKIE = 'clicksy_session'
@@ -114,6 +115,9 @@ authRouter.post('/register', async (req, res) => {
 
   if (!name || !email) return res.status(400).json({ error: 'required' })
   if (!EMAIL_RE.test(email)) return res.status(400).json({ error: 'badEmail' })
+  // gamil.com, gmail.con … : the code would go nowhere (or to a stranger's look-alike domain).
+  const suggestion = suggestEmail(email)
+  if (suggestion) return res.status(400).json({ error: 'emailTypo', suggestion })
   if (password.length < 6) return res.status(400).json({ error: 'short' })
   if (limited(`reg:${req.ip}`)) return res.status(429).json({ error: 'tooMany' })
 

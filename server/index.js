@@ -1,13 +1,28 @@
 import { createApp } from './app.js'
 import { config, envFile } from './config.js'
-import { dbFlavor, explainDbError, initDb } from './db.js'
+import { dbFlavor, explainDbError, initDb, pool } from './db.js'
 import { mailProvider } from './mailer.js'
 
-try {
-  await initDb()
-} catch (err) {
-  console.error(`\n✗ Database: ${explainDbError(err)}\n`)
-  process.exit(1)
+// A cloud database can be briefly unreachable while a new server boots (network warm-up).
+// Retry those network errors a few times; wrong passwords etc. still stop at once.
+const NETWORK_ERRORS = new Set([
+  'ETIMEDOUT', 'ECONNREFUSED', 'ECONNRESET', 'EHOSTUNREACH', 'ENETUNREACH', 'EAI_AGAIN',
+  'ENOTFOUND', 'PROTOCOL_CONNECTION_LOST',
+])
+const ATTEMPTS = 6
+for (let attempt = 1; ; attempt++) {
+  try {
+    await initDb()
+    break
+  } catch (err) {
+    await pool?.end().catch(() => {})
+    const retry = NETWORK_ERRORS.has(err.code) && attempt < ATTEMPTS
+    console.error(`\n✗ Database (attempt ${attempt}/${ATTEMPTS}): ${explainDbError(err)}`)
+    if (!retry) process.exit(1)
+    const wait = attempt * 5
+    console.error(`  …trying again in ${wait}s`)
+    await new Promise((r) => setTimeout(r, wait * 1000))
+  }
 }
 
 const mail = {
