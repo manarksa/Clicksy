@@ -1,12 +1,14 @@
 /**
- * Copies Clicksy data from the local MySQL (.env) to the cloud database (.env.tidb).
+ * Copies Clicksy data between the local MySQL (.env) and the cloud database (.env.tidb).
  *
- *   npm run db:copy            → dry run: shows what would be copied, writes nothing
- *   npm run db:copy -- --yes   → copies
+ *   npm run db:copy            → local → cloud, dry run: shows what would be copied, writes nothing
+ *   npm run db:copy -- --yes   → local → cloud, copies
+ *   npm run db:pull            → cloud → local, dry run
+ *   npm run db:pull -- --yes   → cloud → local, copies (new sign-ups and bookings from the live site)
  *
  * Safe by design:
- *  - The local database is only READ.
- *  - In the cloud database it only creates missing tables and INSERTs rows whose id
+ *  - The source database is only READ.
+ *  - In the target database it only creates missing tables and INSERTs rows whose id
  *    is not there yet (INSERT IGNORE). It never DELETEs, UPDATEs or DROPs anything.
  *  - Sign-in codes and login sessions are temporary, so they are not copied
  *    (everyone simply signs in again on the new site).
@@ -15,14 +17,19 @@ import { existsSync, readFileSync } from 'node:fs'
 import { parseEnv } from 'node:util'
 import { applySchema, createDbPool, describeServer, explainDbError } from './db.js'
 
-const SOURCE_FILE = '.env'
-const TARGET_FILE = '.env.tidb'
+const LOCAL_FILE = '.env'
+const CLOUD_FILE = '.env.tidb'
+const pull = process.argv.includes('--from-cloud')
+const SOURCE_FILE = pull ? CLOUD_FILE : LOCAL_FILE
+const TARGET_FILE = pull ? LOCAL_FILE : CLOUD_FILE
+const SOURCE_LABEL = pull ? 'cloud' : 'local'
+const TARGET_LABEL = pull ? 'local' : 'cloud'
 const TABLES = ['users', 'bookings'] // parent table first
 const write = process.argv.includes('--yes')
 
 function dbFrom(file) {
   if (!existsSync(file)) {
-    console.error(`✗ ${file} not found. Copy .env.example to ${file} and fill in the ${file === TARGET_FILE ? 'TiDB' : 'local'} values.`)
+    console.error(`✗ ${file} not found. Copy .env.example to ${file} and fill in the ${file === CLOUD_FILE ? 'TiDB' : 'local'} values.`)
     process.exit(1)
   }
   const e = parseEnv(readFileSync(file, 'utf8'))
@@ -57,13 +64,13 @@ async function connect(pool, db, label) {
 }
 
 try {
-  await connect(source, sourceDb, 'From (local)')
-  await connect(target, targetDb, 'To   (cloud)')
+  await connect(source, sourceDb, `From (${SOURCE_LABEL})`)
+  await connect(target, targetDb, `To   (${TARGET_LABEL})`)
   console.log(write ? '\nMode: COPY\n' : '\nMode: dry run (add -- --yes to copy)\n')
 
   if (write) await applySchema(target)
 
-  // Local user ids that belong to a DIFFERENT person in the cloud: never attach their bookings.
+  // Source user ids that belong to a DIFFERENT person in the target: never attach their bookings.
   const clashingUserIds = new Set()
 
   for (const table of TABLES) {
@@ -79,13 +86,13 @@ try {
       const [cloudUsers] = await target.query('SELECT id, email FROM users')
       const byId = new Map(cloudUsers.map((u) => [u.id, u.email]))
       for (const r of rows) if (byId.has(r.id) && byId.get(r.id) !== r.email) clashingUserIds.add(r.id)
-      if (clashingUserIds.size) console.log(`⚠ user id(s) ${[...clashingUserIds].join(', ')} are used by someone else in the cloud — their bookings are skipped`)
+      if (clashingUserIds.size) console.log(`⚠ user id(s) ${[...clashingUserIds].join(', ')} are used by someone else in the ${TARGET_LABEL} database — their bookings are skipped`)
     }
     const fresh = rows.filter(
       (r) => !existing.has(r.id) && !(table === 'bookings' && clashingUserIds.has(r.user_id)),
     )
-    // Same email already in the cloud under another id (e.g. the owner created by the server):
-    // keep the cloud row, skip the local one.
+    // Same email already in the target under another id (e.g. the owner created by the server):
+    // keep the target row, skip the source one.
     if (table === 'users' && fresh.length) {
       try {
         const [emails] = await target.query('SELECT email FROM users')
@@ -108,7 +115,7 @@ try {
       }
     }
     console.log(
-      `${table.padEnd(9)} local ${String(rows.length).padStart(3)} · already in cloud ${String(rows.length - fresh.length).padStart(3)} · ${write ? `copied ${inserted}` : `would copy ${fresh.length}`}`,
+      `${table.padEnd(9)} ${SOURCE_LABEL} ${String(rows.length).padStart(3)} · already in ${TARGET_LABEL} ${String(rows.length - fresh.length).padStart(3)} · ${write ? `copied ${inserted}` : `would copy ${fresh.length}`}`,
     )
   }
 
@@ -116,9 +123,9 @@ try {
     const [[orphans]] = await target.query(
       'SELECT COUNT(*) AS n FROM bookings b LEFT JOIN users u ON u.id = b.user_id WHERE u.id IS NULL',
     )
-    console.log(orphans.n === 0 ? '\n✓ Every booking belongs to a user in the cloud database.' : `\n⚠ ${orphans.n} booking(s) have no matching user.`)
+    console.log(orphans.n === 0 ? `\n✓ Every booking belongs to a user in the ${TARGET_LABEL} database.` : `\n⚠ ${orphans.n} booking(s) have no matching user.`)
   }
-  console.log('\nThe local database was only read. Nothing was deleted anywhere.')
+  console.log(`\nThe ${SOURCE_LABEL} database was only read. Nothing was deleted anywhere.`)
 } catch (err) {
   console.error(`\n✗ ${explainDbError(err)}`)
   process.exitCode = 1

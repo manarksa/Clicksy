@@ -13,7 +13,8 @@
     "preview": "vite preview",
     "test:db": "node server/smoke-test.js",
     "test:tidb": "node server/smoke-test.js --env .env.tidb",
-    "db:copy": "node server/copy-to-cloud.js"
+    "db:copy": "node server/copy-to-cloud.js",
+    "db:pull": "node server/copy-to-cloud.js --from-cloud"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

@@ -34,19 +34,24 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
     document
       .querySelector('meta[name="description"]')
       ?.setAttribute('content', copy.meta.description)
+  }, [lang])
+
+  /** Remember a language only when the visitor chooses it. */
+  const choose = (next: Lang) => {
     try {
-      localStorage.setItem(LANG_KEY, lang)
+      localStorage.setItem(LANG_KEY, next)
     } catch {
       /* Keep the in-memory choice if storage is unavailable. */
     }
-  }, [lang])
+    setLangState(next)
+  }
 
   const value = useMemo<LanguageContextValue>(
     () => ({
       lang,
       t: messages[lang],
-      setLang: setLangState,
-      toggleLang: () => setLangState((current) => (current === 'ar' ? 'en' : 'ar')),
+      setLang: choose,
+      toggleLang: () => choose(lang === 'ar' ? 'en' : 'ar'),
     }),
     [lang],
   )

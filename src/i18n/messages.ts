@@ -778,16 +778,18 @@ export function formatDate(iso: string, lang: Lang) {
   })
 }
 
-export const LANG_KEY = 'clicksy_lang'
+/** Saved only when a visitor picks a language. (The old 'clicksy_lang' key was written on every
+ * visit, so it is ignored: it does not tell us anyone actually chose Arabic.) */
+export const LANG_KEY = 'clicksy_language'
 
 export function readStoredLang(): Lang {
   try {
     const stored = localStorage.getItem(LANG_KEY)
     if (stored === 'ar' || stored === 'en') return stored
   } catch {
-    /* Storage can be blocked; Arabic is the project default. */
+    /* Storage can be blocked. */
   }
-  return 'ar'
+  return 'en' // default for everyone without a saved choice, whatever the browser language
 }
 
 export function fill(template: string, values: Record<string, string | number>) {
