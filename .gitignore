@@ -30,3 +30,6 @@ dist-ssr
 backups/
 .env.*
 !.env.example
+
+# Shared team DB login (Aiven clicksy_team) — never commit
+team-db-credentials.txt

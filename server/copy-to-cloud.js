@@ -43,6 +43,7 @@ function dbFrom(file) {
       ? {
           minVersion: 'TLSv1.2',
           rejectUnauthorized: true,
+          verifyIdentity: true,
           // Aiven and other private-CA hosts: DB_SSL_CA=path/to/ca.pem
           ...(e.DB_SSL_CA && existsSync(e.DB_SSL_CA) ? { ca: readFileSync(e.DB_SSL_CA) } : {}),
         }

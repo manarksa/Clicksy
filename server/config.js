@@ -40,6 +40,7 @@ export const config = {
       ? {
           minVersion: 'TLSv1.2',
           rejectUnauthorized: true,
+          verifyIdentity: true, // also check the certificate is for DB_HOST (mysql2 skips this by default)
           ...(env.DB_SSL_CA ? { ca: readFileSync(env.DB_SSL_CA) } : {}),
         }
       : undefined,

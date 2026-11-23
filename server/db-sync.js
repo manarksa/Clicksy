@@ -56,7 +56,7 @@ function dbFrom(file) {
     password: e.DB_PASSWORD || '',
     database: e.DB_NAME || 'clicksy',
     ssl: /^(1|true|yes)$/i.test(e.DB_SSL || '')
-      ? { minVersion: 'TLSv1.2', rejectUnauthorized: true, ...(e.DB_SSL_CA ? { ca: readFileSync(e.DB_SSL_CA) } : {}) }
+      ? { minVersion: 'TLSv1.2', rejectUnauthorized: true, verifyIdentity: true, ...(e.DB_SSL_CA ? { ca: readFileSync(e.DB_SSL_CA) } : {}) }
       : undefined,
   }
 }
