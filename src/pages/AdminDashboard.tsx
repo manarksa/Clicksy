@@ -6,8 +6,9 @@ import { Sidebar } from '../components/Sidebar'
 import { useAuth } from '../context/AuthContext'
 import { useBookings } from '../context/BookingContext'
 import { useI18n } from '../context/LanguageContext'
-import { formatPrice, packages } from '../data/catalog'
-import { bookingEventTitle, fill, formatDate, packageCopy, statusLabel } from '../i18n/messages'
+import { usePackages } from '../context/PackagesContext'
+import { formatPrice } from '../data/catalog'
+import { bookingEventTitle, fill, formatDate, statusLabel } from '../i18n/messages'
 import type { Booking, BookingStatus, User } from '../types'
 
 const STATUSES: BookingStatus[] = ['pending', 'confirmed', 'completed', 'cancelled']
@@ -340,24 +341,25 @@ function AdminBookings() {
 
 function AdminPackages() {
   const { lang, t } = useI18n()
+  const { packages, status } = usePackages()
 
   return (
     <div className="dash-panel">
       <h1>{t.admin.packages}</h1>
       <p className="lede">{t.admin.ratesNote}</p>
+      {status === 'error' && <p className="form-msg">{t.errors.server}</p>}
       <div className="package-grid admin-packages">
         {packages.map((pkg) => {
-          const copy = packageCopy(t, pkg.id)
           return (
             <article key={pkg.id} className="package-card">
               <h3>{pkg.name}</h3>
-              <p className="package-tag">{copy?.tagline}</p>
+              <p className="package-tag">{pkg.tagline}</p>
               <p className="package-price">
                 <span>{formatPrice(pkg.hourlyRate, lang)}</span>
                 <small>{fill(t.packages.rateLine, { hours: pkg.minHours })}</small>
               </p>
               <ul>
-                {copy?.features.map((feature) => (
+                {pkg.features.map((feature) => (
                   <li key={feature}>{feature}</li>
                 ))}
               </ul>

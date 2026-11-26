@@ -1,6 +1,6 @@
 import { createApp } from './app.js'
 import { config, envFile } from './config.js'
-import { dbFlavor, explainDbError, initDb, pool } from './db.js'
+import { activePackages, dbFlavor, explainDbError, initDb, pool } from './db.js'
 import { mailProvider } from './mailer.js'
 
 // A cloud database can be briefly unreachable while a new server boots (network warm-up).
@@ -36,5 +36,6 @@ createApp().listen(config.port, '0.0.0.0', () => {
   console.log(`✓ ${dbFlavor} connected as "${config.db.user}" (database "${config.db.database}"${config.db.ssl ? ', TLS' : ''})`)
   console.log(`✓ Running on port ${config.port}${config.production ? ' (production)' : ''} · settings: ${process.env.RENDER ? 'host environment' : envFile}`)
   console.log(mail[mailProvider()])
+  console.log(activePackages ? `✓ ${activePackages} packages loaded from the database` : '⚠  No packages in the database — run: npm run db:seed -- --yes')
   if (config.readOnly) console.log('⚠  READ_ONLY is on — sign-ups, sign-ins and bookings are paused.')
 })

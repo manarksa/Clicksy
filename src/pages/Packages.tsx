@@ -2,11 +2,13 @@ import { Link } from 'react-router-dom'
 import { Footer } from '../components/Footer'
 import { Navbar } from '../components/Navbar'
 import { useI18n } from '../context/LanguageContext'
-import { formatPrice, packages } from '../data/catalog'
-import { fill, packageCopy } from '../i18n/messages'
+import { usePackages } from '../context/PackagesContext'
+import { formatPrice } from '../data/catalog'
+import { fill } from '../i18n/messages'
 
 export function Packages() {
   const { lang, t } = useI18n()
+  const { packages, status } = usePackages()
 
   return (
     <div className="page">
@@ -18,8 +20,8 @@ export function Packages() {
           <p>{t.packages.intro}</p>
         </div>
         <div className="package-grid">
+          {status === 'error' && <p className="form-msg">{t.errors.server}</p>}
           {packages.map((pkg) => {
-            const copy = packageCopy(t, pkg.id)
             return (
               <article
                 key={pkg.id}
@@ -27,13 +29,13 @@ export function Packages() {
               >
                 {pkg.popular && <span className="badge">{t.packages.popular}</span>}
                 <h3>{pkg.name}</h3>
-                <p className="package-tag">{copy?.tagline}</p>
+                <p className="package-tag">{pkg.tagline}</p>
                 <p className="package-price">
                   <span>{formatPrice(pkg.hourlyRate, lang)}</span>
                   <small>{fill(t.packages.rateLine, { hours: pkg.minHours })}</small>
                 </p>
                 <ul>
-                  {copy?.features.map((feature) => (
+                  {pkg.features.map((feature) => (
                     <li key={feature}>{feature}</li>
                   ))}
                 </ul>

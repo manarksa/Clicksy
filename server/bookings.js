@@ -1,7 +1,8 @@
 import { Router } from 'express'
-import { estimateTotal, eventTypes, packages } from '../src/data/catalog.ts'
+import { estimateTotal, eventTypes } from '../src/data/catalog.ts'
 import { config } from './config.js'
 import { pool } from './db.js'
+import { findActivePackage } from './packages.js'
 import { bookingReceivedEmail, newBookingOwnerEmail, statusEmail } from './mailer.js'
 import { requireOwner, requireUser } from './auth.js'
 
@@ -58,8 +59,9 @@ bookingsRouter.post('/bookings', requireUser, async (req, res) => {
   if (req.user.role === 'admin') return res.status(403).json({ error: 'forbidden' })
   const body = req.body ?? {}
 
-  // Prices come from the server's catalog, never from the browser.
-  const pkg = packages.find((p) => p.id === body.packageId)
+  // Prices come from the packages table, never from the browser.
+  const row = await findActivePackage(body.packageId)
+  const pkg = row && { id: row.package_id, name: row.name, hourlyRate: row.price, minHours: row.duration }
   const event = eventTypes.find((e) => e.id === body.eventTypeId)
   const custom = String(body.customEventName ?? '').trim().slice(0, 80)
   const hours = Math.round(Number(body.hours))

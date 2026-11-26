@@ -7,6 +7,7 @@ import { authRouter, loadUser } from './auth.js'
 import { bookingsRouter } from './bookings.js'
 import { config } from './config.js'
 import { pool } from './db.js'
+import { packagesRouter } from './packages.js'
 
 /** Changes on every start: during a move it shows whether an old server is still answering. */
 const BOOT_ID = randomBytes(4).toString('hex')
@@ -42,6 +43,7 @@ export function createApp() {
   app.use('/api', loadUser)
   app.use('/api/auth', authRouter)
   app.use('/api', bookingsRouter)
+  app.use('/api', packagesRouter)
   app.use('/api', (_req, res) => res.status(404).json({ error: 'notFound' }))
 
   // After `npm run build`, the same server hands out the website: one link for site + API.

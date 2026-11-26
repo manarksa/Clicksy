@@ -1,11 +1,6 @@
-import { estimateTotal, formatPrice, packages } from './data/catalog'
-import {
-  eventCopy,
-  fill,
-  packageCopy,
-  type Lang,
-  type Messages,
-} from './i18n/messages'
+import { estimateTotal, formatPrice } from './data/catalog'
+import { eventCopy, fill, type Lang, type Messages } from './i18n/messages'
+import type { Package } from './types'
 
 export type Ask = 'event' | 'guests' | 'coverage' | null
 
@@ -76,27 +71,26 @@ function idealPackage(slots: Slots) {
   return 'essential'
 }
 
-function packageFacts(id: string, t: Messages, lang: Lang) {
+function packageFacts(packages: Package[], id: string, lang: Lang) {
   const pkg = packages.find((item) => item.id === id) ?? packages[0]
-  const copy = packageCopy(t, pkg.id)
   return {
     name: pkg.name,
     price: formatPrice(pkg.hourlyRate, lang),
     hours: pkg.minHours,
     minimum: formatPrice(estimateTotal(pkg.hourlyRate, pkg.minHours), lang),
-    tagline: copy?.tagline ?? pkg.tagline,
-    features: (copy?.features ?? pkg.features).join(lang === 'ar' ? '، ' : ', '),
+    tagline: pkg.tagline,
+    features: pkg.features.join(lang === 'ar' ? '، ' : ', '),
   }
 }
 
-function recommend(slots: Slots, t: Messages, lang: Lang) {
+function recommend(packages: Package[], slots: Slots, t: Messages, lang: Lang) {
   const ideal = packages.find((item) => item.id === idealPackage(slots)) ?? packages[0]
   const idealMin = estimateTotal(ideal.hourlyRate, ideal.minHours)
   const entry = packages[0]
   const entryMin = estimateTotal(entry.hourlyRate, entry.minHours)
 
   if (slots.budget != null && slots.budget < entryMin) {
-    const facts = packageFacts(entry.id, t, lang)
+    const facts = packageFacts(packages, entry.id, lang)
     return {
       packageId: entry.id,
       text: fill(t.assistant.budgetLow, facts),
@@ -111,14 +105,21 @@ function recommend(slots: Slots, t: Messages, lang: Lang) {
     chosen = affordable[0] ?? entry
   }
 
-  const facts = packageFacts(chosen.id, t, lang)
+  const facts = packageFacts(packages, chosen.id, lang)
   return {
     packageId: chosen.id,
     text: fill(t.assistant.recommend, facts),
   }
 }
 
-export function assistantTurn(raw: string, slots: Slots, t: Messages, lang: Lang) {
+/** packages: the active packages from the database, in the current language (cheapest first). */
+export function assistantTurn(
+  raw: string,
+  slots: Slots,
+  t: Messages,
+  lang: Lang,
+  packages: Package[],
+) {
   const text = raw.trim().slice(0, 400).toLowerCase()
   let next = readSlots(text, t, slots)
 
@@ -149,7 +150,10 @@ export function assistantTurn(raw: string, slots: Slots, t: Messages, lang: Lang
     return { slots: next, text: t.assistant.askCoverage, ask: 'coverage' as Ask, packageId: undefined }
   }
 
-  const result = recommend(next, t, lang)
+  if (!packages.length) {
+    return { slots: next, text: t.errors.server, ask: null as Ask, packageId: undefined }
+  }
+  const result = recommend(packages, next, t, lang)
   return { slots: { ...next, choosing: false }, ...result, ask: null as Ask }
 }
 

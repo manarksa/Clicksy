@@ -12,6 +12,8 @@ const REQUIRED = {
   users: ['id', 'name', 'email', 'phone', 'password_hash', 'role', 'email_verified', 'created_at'],
   email_codes: ['id', 'user_id', 'code_hash', 'expires_at', 'attempts', 'used', 'created_at'],
   sessions: ['token_hash', 'user_id', 'expires_at'],
+  packages: ['package_id', 'name', 'description_en', 'description_ar', 'price', 'duration', 'is_popular', 'is_active'],
+  package_features: ['feature_id', 'package_id', 'feature_name_en', 'feature_name_ar', 'sort_order'],
   bookings: [
     'id', 'user_id', 'package_id', 'package_name', 'event_type_id', 'custom_event_name',
     'hours', 'event_date', 'location', 'notes', 'total_price', 'status', 'created_at',
@@ -35,13 +37,20 @@ export function createDbPool(db = config.db) {
 
 /** Creates missing tables (CREATE TABLE IF NOT EXISTS — never drops or empties anything). */
 export async function applySchema(target) {
-  const schema = readFileSync(new URL('./schema.sql', import.meta.url), 'utf8')
-  const statements = schema
+  await runSqlFile(target, 'schema.sql')
+  await checkColumns(target)
+}
+
+/** Runs every statement of a .sql file next to this one (statements end with ";" at line end). */
+export async function runSqlFile(target, name) {
+  const text = readFileSync(new URL(`./${name}`, import.meta.url), 'utf8')
+  const statements = text
     .split(/;\s*(?:\r?\n|$)/)
     .map((s) => s.replace(/^\s*--.*$/gm, '').trim())
     .filter(Boolean)
-  for (const sql of statements) await target.query(sql)
-  await checkColumns(target)
+  const results = []
+  for (const sql of statements) results.push((await target.query(sql))[0])
+  return results
 }
 
 export async function describeServer(target) {
@@ -61,11 +70,16 @@ export async function initDb() {
   if (config.readOnly) {
     // Maintenance: only check the tables, never create or change anything (not even the owner).
     await checkColumns(pool)
-    return
+  } else {
+    await applySchema(pool)
+    await ensureOwner()
   }
-  await applySchema(pool)
-  await ensureOwner()
+  const [[active]] = await pool.query('SELECT COUNT(*) AS n FROM packages WHERE is_active = 1')
+  activePackages = Number(active.n)
 }
+
+/** Bookable packages found at start (0 = run `npm run db:seed`). Set by initDb(). */
+export let activePackages = 0
 
 const READ_SQL = /^\s*(SELECT|SHOW|DESCRIBE|DESC|EXPLAIN|WITH)\b/i
 

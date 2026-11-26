@@ -45,38 +45,6 @@ const en = {
     rateLine: '/ hour · min {hours}h',
     select: 'Select {name}',
   },
-  packageCopy: {
-    essential: {
-      tagline: 'Clean coverage for intimate gatherings',
-      features: [
-        '1 lead photographer',
-        'Edited photo gallery',
-        'Online delivery in 7 days',
-        'Personal usage license',
-      ],
-    },
-    signature: {
-      tagline: 'Photo + film highlights for the full night',
-      features: [
-        'Photographer + videographer',
-        '60–90s highlight reel',
-        'Color-graded stills',
-        'Priority delivery in 5 days',
-        'Social media cutdowns',
-      ],
-    },
-    prestige: {
-      tagline: 'Full studio crew. Cinematic everything.',
-      features: [
-        '2 photographers + 1 videographer',
-        'Drone / cinematic B-roll*',
-        'Full event film + album-ready edits',
-        'Same-week preview selects',
-        'Dedicated creative director',
-        'Raw files on request',
-      ],
-    },
-  },
   how: {
     eyebrow: 'How it works',
     title: 'From scroll to shoot.',
@@ -276,7 +244,7 @@ const en = {
     date: 'Date',
     total: 'Total',
     status: 'Status',
-    ratesNote: 'Current public rates (edit in catalog data for now).',
+    ratesNote: 'Current public rates (managed in the database: packages and package_features).',
     noPhone: 'No phone',
     notes: 'Notes',
     all: 'All',
@@ -431,38 +399,6 @@ const ar: typeof en = {
     popular: 'الأكثر حجزًا',
     rateLine: '/ ساعة · حد أدنى {hours} س',
     select: 'اختيار {name}',
-  },
-  packageCopy: {
-    essential: {
-      tagline: 'تغطية أنيقة للمناسبات الحميمة',
-      features: [
-        'مصور رئيسي',
-        'معرض صور بعد التعديل',
-        'تسليم إلكتروني خلال 7 أيام',
-        'ترخيص استخدام شخصي',
-      ],
-    },
-    signature: {
-      tagline: 'صور وفيلم لأبرز لحظات الأمسية',
-      features: [
-        'مصور ومصوّر فيديو',
-        'فيلم قصير من 60–90 ثانية',
-        'صور بتدرج لوني',
-        'تسليم أولوية خلال 5 أيام',
-        'مقاطع قصيرة لمنصات التواصل',
-      ],
-    },
-    prestige: {
-      tagline: 'طاقم استوديو كامل. كل شيء سينمائي.',
-      features: [
-        'مصوران ومصوّر فيديو',
-        'درون / لقطات سينمائية*',
-        'فيلم المناسبة وتعديلات جاهزة للألبوم',
-        'مختارات معاينة خلال الأسبوع نفسه',
-        'مخرج إبداعي مخصّص',
-        'الملفات الأصلية عند الطلب',
-      ],
-    },
   },
   how: {
     eyebrow: 'كيف نعمل',
@@ -663,7 +599,7 @@ const ar: typeof en = {
     date: 'التاريخ',
     total: 'الإجمالي',
     status: 'الحالة',
-    ratesNote: 'الأسعار الظاهرة حاليًا (التعديل من بيانات الكتالوج حاليًا).',
+    ratesNote: 'الأسعار الظاهرة حاليًا (تُدار من قاعدة البيانات: packages وpackage_features).',
     noPhone: 'لا يوجد جوال',
     notes: 'ملاحظات',
     all: 'الكل',
@@ -806,13 +742,6 @@ export function fill(template: string, values: Record<string, string | number>) 
   return template.replace(/\{(\w+)\}/g, (_, key: string) =>
     String(values[key] ?? ''),
   )
-}
-
-export function packageCopy(t: Messages, id: string) {
-  const copy = (
-    t.packageCopy as Record<string, { tagline: string; features: string[] }>
-  )[id]
-  return copy
 }
 
 export function eventCopy(t: Messages, id: string) {

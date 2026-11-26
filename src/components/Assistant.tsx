@@ -2,7 +2,8 @@ import { useEffect, useId, useRef, useState } from 'react'
 import { Link, useLocation } from 'react-router-dom'
 import { assistantTurn, emptySlots, type Ask, type Slots } from '../assistantReply'
 import { useI18n } from '../context/LanguageContext'
-import { eventTypes, packages } from '../data/catalog'
+import { usePackages } from '../context/PackagesContext'
+import { eventTypes } from '../data/catalog'
 import { eventCopy, fill } from '../i18n/messages'
 
 type ChatMessage = {
@@ -15,6 +16,7 @@ type ChatMessage = {
 export function Assistant() {
   const { pathname } = useLocation()
   const { lang, t } = useI18n()
+  const { packages } = usePackages()
   const titleId = useId()
   const inputRef = useRef<HTMLInputElement>(null)
   const launchRef = useRef<HTMLButtonElement>(null)
@@ -76,7 +78,7 @@ export function Assistant() {
     const id = nextId.current++
     setMessages((current) => [...current, { id, from: 'user', text: value }])
     setDraft('')
-    const result = assistantTurn(value, slots, t, lang)
+    const result = assistantTurn(value, slots, t, lang, packages)
     setSlots(result.slots)
     setAsk(result.ask)
     pushAssistant(result.text, result.packageId)

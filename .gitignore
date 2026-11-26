@@ -33,3 +33,4 @@ backups/
 
 # Shared team DB login (Aiven clicksy_team) — never commit
 team-db-credentials.txt
+team-db-credentials-tidb.txt

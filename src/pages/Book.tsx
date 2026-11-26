@@ -5,15 +5,11 @@ import { Navbar } from '../components/Navbar'
 import { useAuth } from '../context/AuthContext'
 import { useBookings } from '../context/BookingContext'
 import { useI18n } from '../context/LanguageContext'
-import {
-  estimateTotal,
-  eventTypes,
-  formatPrice,
-  packages,
-} from '../data/catalog'
+import { usePackages } from '../context/PackagesContext'
+import { estimateTotal, eventTypes, formatPrice } from '../data/catalog'
 import { errorCode } from '../api'
-import { eventCopy, fill, packageCopy } from '../i18n/messages'
-import type { BookingDraft } from '../types'
+import { eventCopy, fill } from '../i18n/messages'
+import type { BookingDraft, Package } from '../types'
 
 const stepIds = ['package', 'event', 'hours', 'details'] as const
 const MAX_HOURS = 16
@@ -28,11 +24,29 @@ function maxDateIso() {
   return `${new Date().getFullYear() + 2}-12-31`
 }
 
-function validPackageId(id: string | null | undefined) {
+function validPackageId(packages: Package[], id: string | null | undefined) {
   return id && packages.some((p) => p.id === id) ? id : null
 }
 
+/** Packages come from the database; the form opens once they are loaded. */
 export function Book() {
+  const { packages, status } = usePackages()
+  const { t } = useI18n()
+  if (!packages.length) {
+    return (
+      <div className="page">
+        <Navbar />
+        <main className="book-page">
+          {status === 'error' && <p className="form-msg">{t.errors.server}</p>}
+        </main>
+        <Footer />
+      </div>
+    )
+  }
+  return <BookForm packages={packages} />
+}
+
+function BookForm({ packages }: { packages: Package[] }) {
   const [params] = useSearchParams()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -41,7 +55,9 @@ export function Book() {
 
   const [step, setStep] = useState(0)
   const [packageId, setPackageId] = useState(
-    validPackageId(params.get('package')) ?? validPackageId(draft?.packageId) ?? packages[1].id,
+    validPackageId(packages, params.get('package')) ??
+      validPackageId(packages, draft?.packageId) ??
+      (packages.find((p) => p.popular) ?? packages[0]).id,
   )
   const [eventTypeId, setEventTypeId] = useState(
     draft?.eventTypeId || eventTypes[0].id,
@@ -59,7 +75,7 @@ export function Book() {
 
   const selectedPackage = useMemo(
     () => packages.find((p) => p.id === packageId) ?? packages[0],
-    [packageId],
+    [packages, packageId],
   )
   const selectedEvent = useMemo(
     () => eventTypes.find((e) => e.id === eventTypeId) ?? eventTypes[0],
@@ -181,7 +197,6 @@ export function Book() {
             {step === 0 && (
               <div className="choice-grid">
                 {packages.map((pkg) => {
-                  const copy = packageCopy(t, pkg.id)
                   return (
                     <button
                       key={pkg.id}
@@ -190,7 +205,7 @@ export function Book() {
                       onClick={() => setPackageId(pkg.id)}
                     >
                       <strong>{pkg.name}</strong>
-                      <span>{copy?.tagline}</span>
+                      <span>{pkg.tagline}</span>
                       <em>
                         {fill(t.book.choiceMeta, {
                           price: price(pkg.hourlyRate),

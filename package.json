@@ -16,7 +16,8 @@
     "db:copy": "node server/copy-to-cloud.js",
     "db:pull": "node server/copy-to-cloud.js --from-cloud",
     "db:verify": "node server/db-sync.js",
-    "db:sync": "node server/db-sync.js --apply"
+    "db:sync": "node server/db-sync.js --apply",
+    "db:seed": "node server/seed-packages.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",

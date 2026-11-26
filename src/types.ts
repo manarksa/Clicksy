@@ -8,6 +8,7 @@ export interface User {
   role: UserRole
 }
 
+/** A package as shown on the page, in the current language. */
 export interface Package {
   id: string
   name: string
@@ -16,6 +17,17 @@ export interface Package {
   minHours: number
   features: string[]
   popular?: boolean
+}
+
+/** A package as /api/packages sends it: both languages (from the packages + package_features tables). */
+export interface PackageRecord {
+  id: string
+  name: string
+  hourlyRate: number
+  minHours: number
+  popular: boolean
+  tagline: { en: string; ar: string }
+  features: { en: string[]; ar: string[] }
 }
 
 export interface EventType {

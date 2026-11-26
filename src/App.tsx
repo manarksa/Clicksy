@@ -5,6 +5,7 @@ import { StudioIntro } from './components/StudioIntro'
 import { AuthProvider } from './context/AuthContext'
 import { BookingProvider } from './context/BookingContext'
 import { LanguageProvider } from './context/LanguageContext'
+import { PackagesProvider } from './context/PackagesContext'
 import { AdminDashboard } from './pages/AdminDashboard'
 import { Book } from './pages/Book'
 import { Help } from './pages/Help'
@@ -30,6 +31,7 @@ function ScrollToHash() {
 export default function App() {
   return (
     <LanguageProvider>
+      <PackagesProvider>
       <AuthProvider>
         <BookingProvider>
           <BrowserRouter>
@@ -50,6 +52,7 @@ export default function App() {
           </BrowserRouter>
         </BookingProvider>
       </AuthProvider>
+      </PackagesProvider>
     </LanguageProvider>
   )
 }
