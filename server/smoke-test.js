@@ -6,7 +6,6 @@
  * Emails are printed instead of sent. At the end it deletes ONLY the test client it created
  * (and that client's codes, sessions, and booking). Nothing else is touched.
  */
-import { createHash } from 'node:crypto'
 
 const { config } = await import('./config.js')
 config.mail.disabled = true // print emails instead of sending them during the test
@@ -19,8 +18,8 @@ try {
 }
 const { pool } = db // set by initDb()
 const { createApp } = await import('./app.js')
+const { codeHash } = await import('./auth.js')
 
-const sha256 = (v) => createHash('sha256').update(v).digest('hex')
 const server = createApp().listen(0)
 await new Promise((r) => server.once('listening', r))
 const base = `http://127.0.0.1:${server.address().port}/api`
@@ -47,7 +46,7 @@ function client() {
 
 /** The real code was emailed (printed). The test swaps in a known one so it can type it. */
 async function setKnownCode(userId, code = '123456') {
-  await pool.query('UPDATE email_codes SET code_hash = ? WHERE user_id = ? AND used = 0', [sha256(code), userId])
+  await pool.query('UPDATE email_codes SET code_hash = ? WHERE user_id = ? AND used = 0', [codeHash(code), userId])
   return code
 }
 

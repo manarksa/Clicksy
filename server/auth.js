@@ -1,4 +1,4 @@
-import { createHash, randomBytes, randomInt } from 'node:crypto'
+import { createHash, createHmac, randomBytes, randomInt } from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { Router } from 'express'
 import { config } from './config.js'
@@ -13,6 +13,16 @@ const MAX_CODE_ATTEMPTS = 5
 const RESEND_SECONDS = 60
 
 const sha256 = (value) => createHash('sha256').update(value).digest('hex')
+
+/**
+ * Email codes have only 6 digits, so a plain sha256 could be reversed by trying all million.
+ * A keyed hash (HMAC) with a server-only key makes the stored value useless to anyone who can
+ * read the email_codes table (e.g. the team in MySQL Workbench). Key: CODE_SECRET if set,
+ * otherwise derived from the database password (both only on the server). Changing the key only
+ * invalidates codes that are still waiting (they last 10 minutes): the client asks for a new one.
+ */
+const CODE_KEY = createHash('sha256').update(`clicksy-email-code|${config.codeSecret || config.db.password}`).digest()
+export const codeHash = (code) => createHmac('sha256', CODE_KEY).update(String(code)).digest('hex')
 const normEmail = (value) => String(value ?? '').trim().toLowerCase()
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
 
@@ -95,7 +105,7 @@ async function issueCode(user) {
   await pool.query(
     `INSERT INTO email_codes (user_id, code_hash, expires_at)
      VALUES (?, ?, NOW() + INTERVAL ${CODE_MINUTES} MINUTE)`,
-    [user.id, sha256(code)],
+    [user.id, codeHash(code)],
   )
   try {
     await codeEmail(user.email, user.name, code)
@@ -184,7 +194,7 @@ authRouter.post('/verify', async (req, res) => {
   if (entry.expired) return res.status(400).json({ error: 'expired' })
   if (entry.attempts >= MAX_CODE_ATTEMPTS) return res.status(429).json({ error: 'tooMany' })
 
-  if (entry.code_hash !== sha256(code)) {
+  if (entry.code_hash !== codeHash(code)) {
     await pool.query('UPDATE email_codes SET attempts = attempts + 1 WHERE id = ?', [entry.id])
     return res.status(400).json({ error: 'badCode' })
   }

@@ -28,6 +28,8 @@ export const config = {
   port: Number(env.PORT || 4000),
   /** READ_ONLY=true pauses every change (sign-up, sign-in, booking) — used while moving databases. */
   readOnly: on(env.READ_ONLY),
+  /** Optional key for hashing email codes (see auth.js). Unset = derived from DB_PASSWORD. */
+  codeSecret: env.CODE_SECRET || '',
   production: env.NODE_ENV === 'production',
   db: {
     host: env.DB_HOST || 'localhost',
