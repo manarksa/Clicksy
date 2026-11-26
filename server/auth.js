@@ -194,7 +194,10 @@ authRouter.post('/verify', async (req, res) => {
   if (entry.expired) return res.status(400).json({ error: 'expired' })
   if (entry.attempts >= MAX_CODE_ATTEMPTS) return res.status(429).json({ error: 'tooMany' })
 
-  if (entry.code_hash !== codeHash(code)) {
+  // A code sent by the previous version (plain sha256) still works until it expires (10 minutes),
+  // so nobody waiting for a code during a deploy is locked out. New codes are always keyed hashes.
+  const matches = entry.code_hash === codeHash(code) || entry.code_hash === sha256(code)
+  if (!matches) {
     await pool.query('UPDATE email_codes SET attempts = attempts + 1 WHERE id = ?', [entry.id])
     return res.status(400).json({ error: 'badCode' })
   }
